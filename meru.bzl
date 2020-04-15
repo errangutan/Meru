@@ -5,17 +5,11 @@ BlockInfo = provider(
     fields = ["libs", "sdc_files"]
 )
 
-def _merge_lib(lib1, lib2):
-    return struct(
-        vlog_files = depset(transitive = [lib1.vlog_files, lib2.vlog_files]),
-        vhdl_files = depset(transitive = [lib1.vhdl_files, lib2.vhdl_files]),
-    )
-
-def _get_transitive_libs(vlog_files, vhdl_files, blocks):
+def _get_transitive_libs(vlog_files, vhdl_files, files_lib, blocks):
     lib_dict_list = [block[BlockInfo].libs for block in blocks]
 
     # Get all lib names in side lib dicts
-    libs = []
+    libs = [files_lib]
     for lib_dict in lib_dict_list:
         libs.extend(lib_dict.keys())
     libs = [x for i,x in enumerate(libs) if x not in libs[:i]] # Remove doubles
@@ -24,15 +18,21 @@ def _get_transitive_libs(vlog_files, vhdl_files, blocks):
     output_libs_dict = {}
     for lib in libs:
         output_libs_dict[lib] = struct(
-            vlog_files = depset(vlog_files, transitive=[lib_dict[lib].vlog_files for lib_dict in lib_dict_list if lib in lib_dict]),
-            vhdl_files = depset(vhdl_files, transitive=[lib_dict[lib].vhdl_files for lib_dict in lib_dict_list if lib in lib_dict]),
+            vlog_files = depset(
+                vlog_files if lib == files_lib else [],
+                transitive=[lib_dict[lib].vlog_files for lib_dict in lib_dict_list if lib in lib_dict]
+            ),
+            vhdl_files = depset(
+                vhdl_files if lib == files_lib else [],
+                transitive=[lib_dict[lib].vhdl_files for lib_dict in lib_dict_list if lib in lib_dict]
+            ),
         )
     
     return output_libs_dict
 
 def _block_impl(ctx):
     return BlockInfo(
-        libs = _get_transitive_libs(ctx.attr.vlog_files, ctx.attr.vhdl_files, ctx.attr.blocks),
+        libs = _get_transitive_libs(ctx.attr.vlog_files, ctx.attr.vhdl_files, ctx.attr.lib, ctx.attr.blocks),
         sdc_files = depset(
             ctx.attr.sdc_files,
             transitive = [block[BlockInfo].sdc_files for block in ctx.attr.blocks],
@@ -75,12 +75,16 @@ block = rule(
 test_attrs = {
         "top" : attr.string(
             doc = "Name of top level module.",
-            #mandatory = True,
+            mandatory = True,
         ),
         "top_file" : attr.label(
             doc = "HDL File which contains the top level module.",
             allow_files = [".vhdl", ".sv", ".v"],
-            #mandatory = True,
+            mandatory = True,
+        ),
+        "lib" : attr.string(
+            doc = "Name of library of the top_file.",
+            default = "work",
         ),
         "blocks" : attr.label_list(
             default = [],
@@ -104,15 +108,19 @@ test_attrs = {
 
 def _test_impl(ctx):
     defines = json_parse(ctx.attr.defines)
+    libs = _get_transitive_libs([], [], ctx.attr.lib, ctx.attr.blocks)
+    sdc = depset([], transitive = [block[BlockInfo].sdc_files for block in ctx.attr.blocks]).to_list()
+    print(sdc)
 
 sim_test = rule(
+    """Verification test"""
     implementation = _test_impl,
     attrs = test_attrs,
     test = True,
 )
 
 testbench = rule(
+    """Testbench"""
     implementation = _test_impl,
     attrs = test_attrs,
-    test = False
 )
