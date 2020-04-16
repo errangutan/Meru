@@ -89,7 +89,6 @@ block = rule(
             providers = [BlockInfo],
         ),
     },
-    visibility = ["//visibility:public"],
     provides = [BlockInfo]
 )
 
