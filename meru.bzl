@@ -88,10 +88,8 @@ block = rule(
             allow_files = False,
             providers = [BlockInfo],
         ),
-        "visibility" : attr.label_list(
-            default = ["//visibility:public"]
-        )
     },
+    visibility = ["//visibility:public"],
     provides = [BlockInfo]
 )
 
