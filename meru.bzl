@@ -146,7 +146,6 @@ def _test_impl(ctx):
             mnemonic = "Vlogan",
             progress_message = "Analysing verilog files.",
         )
-    return [prov]
 
 sim_test = rule(
     doc = "Verification test",
