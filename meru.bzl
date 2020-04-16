@@ -87,6 +87,9 @@ block = rule(
             default = [],
             allow_files = False,
             providers = [BlockInfo],
+        ),
+        "visibility" : attr.label_list(
+            default = ["//visibility:public"]
         )
     },
     provides = [BlockInfo]
@@ -126,7 +129,7 @@ test_attrs = {
         ),
         "_vlogan" : attr.label(
             default = "$(VCS_HOME)/bin/vlogan",
-        )
+        ),
     }
 
 # Note that you must use actions.args for the arguments of the compiler 
