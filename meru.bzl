@@ -128,6 +128,9 @@ test_attrs = {
         ),
         "_vlogan" : attr.label(
             default = "@vcs//:vlogan"
+        ),
+        "_vlogan_runfiles" : attr.label(
+            default = "@vcs//:vlogan_runfiles"
         )
     }
 
@@ -160,6 +163,7 @@ def _test_impl(ctx):
         output_files = [ctx.actions.declare_file(file_path) for file_path in _VLOGAN_OUTPUT]
 
         ctx.actions.run(
+            inputs = ctx.attr._vlogan_runfiles.files,
             outputs = output_files,
             executable = vlogan,
             arguments = [args],

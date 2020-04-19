@@ -7,7 +7,7 @@ filegroup(
     srcs = {},
     visibility = ["//visibility:public"]
 )
-    \n""".format(name, srcs)
+""".format(name, srcs)
 
 def _local_paths(ctx):
     
@@ -31,11 +31,14 @@ def _vcs_repository_impl(ctx):
 
     _local_paths(ctx)
 
-    ctx.file("BUILD", "")
     ctx.file("WORKSPACE", "")
+    BUILD_components = [
+        _file_group("vlogan", ["vcs/bin/vlogan"]),
+        _file_group("vlogan_runfiles", ["vcs/etc/uvm/src/uvm_macros.svh"])
+    ]
 
     # Write BUILD file, so repo will be accessabe as package
-    ctx.file("BUILD", content = _file_group("vlogan", ["vcs/bin/vlogan"]))
+    ctx.file("BUILD", content = "\n".join(BUILD_components))
 
 vcs_repository = repository_rule(
     implementation = _vcs_repository_impl,
