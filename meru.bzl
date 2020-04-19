@@ -166,7 +166,7 @@ def _test_impl(ctx):
         output_files = [ctx.actions.declare_file(file_path) for file_path in _VLOGAN_OUTPUT]
         input_files = [ctx.actions.declare_file(file_path) for file_path in _VLOGAN_RUNFILES]
         ctx.actions.run(
-            inputs = input_files,
+            tools = input_files,
             outputs = output_files,
             executable = vlogan,
             arguments = [args],
