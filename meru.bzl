@@ -132,29 +132,33 @@ test_attrs = {
 def _test_impl(ctx): 
     
     # If VCS environment variables not set, fail.
-    if not local_paths.vcs_home:
+    if local_paths.vcs_home == None:
         fail(msg = "VCS_HOME environment variable not set. Add \"bazel build --action_env VCS_HOME=<path> to /etc/bazel.bazelrc\"")
-    if not local_paths.vcs_license:
+    if local_paths.vcs_license == None:
         fail(msg = "VCS_LICENSE environment variable not set. Add \"bazel build --action_env VCS_LICENSE=<path> to /etc/bazel.bazelrc\"")
 
-    vlogan = Label(paths.join(local_paths.vcs_home, "bin/vlogan"))
+    vlogan = paths.join(local_paths.vcs_home, "bin/vlogan")
 
     defines = json_parse(ctx.attr.defines)
     libs = _get_transitive_libs([], [], ctx.attr.lib, ctx.attr.blocks) # Merge libs of dependencies into single dict
-   
-    Setup paths to 
+    
     for lib_key in libs:
         args = ctx.actions.args()
         vlog_files = libs[lib_key].vlog_files
-        args.add(vlog_files)
+        args.add_all(vlog_files)
+        output_files = [ctx.actions.declare_file(out_file_path) for out_file_path in _VLOGAN_OUTPUT]
         ctx.actions.run(
-            outputs = _VLOGAN_OUTPUT,
-            inputs = vlog_files,
+            outputs = output_files,
             executable = vlogan,
-            arguments = args,
+            arguments = [args],
             mnemonic = "Vlogan",
             progress_message = "Analysing verilog files.",
         )
+        
+        shit = ctx.actions.declare_file("shit")
+        ctx.actions.write(shit, content="")
+        return [DefaultInfo(executable=shit, files=depset(output_files))]
+
 
 sim_test = rule(
     doc = "Verification test",

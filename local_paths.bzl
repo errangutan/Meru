@@ -4,10 +4,10 @@ def _configure_local_paths_impl(repository_ctx):
     environ = repository_ctx.os.environ
     paths_struct_content = ""
     for var in repository_ctx.attr._environ:
-        paths_struct_content += "{} = \"{}\",".format(
+        paths_struct_content += "{} = {},".format(
             var.lower(),
             # If expected env var not set, set the value in struct to None
-            environ[var] if var in environ else "None"
+            "\""+environ[var]+"\"" if var in environ else "None")
 
     # Save struct values in struct called paths.
     paths_content = "local_paths = struct({})".format(paths_struct_content)
@@ -17,7 +17,7 @@ def _configure_local_paths_impl(repository_ctx):
     repository_ctx.file("BUILD", content = "")
 
 local_paths = repository_rule(
-    doc = "Creates repository for local_paths struct."
+    doc = "Creates repository for local_paths struct.",
     implementation = _configure_local_paths_impl,
     local = True,
     configure = True,
