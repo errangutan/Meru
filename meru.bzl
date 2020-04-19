@@ -1,6 +1,6 @@
 load("@bazel_json//lib:json_parser.bzl", "json_parse")
-load("@local_paths//:local_paths.bzl", "local_paths")
-    load("@bazel_skylib//lib:paths.bzl", "paths")
+load("@vcs//:local_paths.bzl", "local_paths")
+load("@bazel_skylib//lib:paths.bzl", "paths")
 
 _VLOGAN_OUTPUT = [
     "AllModulesSkeletons.sdb",
@@ -154,9 +154,8 @@ def _test_impl(ctx):
         args.add_all(vlog_files)
 
         output_files = [ctx.actions.declare_file(file_path) for file_path in _VLOGAN_OUTPUT]
-        
+
         ctx.actions.run(
-            inputs = input_files,
             outputs = output_files,
             executable = vlogan,
             arguments = [args],

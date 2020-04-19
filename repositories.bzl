@@ -1,9 +1,7 @@
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-load("vcs_repositories.bzl", "vcs_repositories")
 
-def meru_dependencies():
-    vcs_repositories(name="vcs")   
+def meru_dependencies():   
 
     maybe(
         http_archive,
