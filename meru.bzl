@@ -18,6 +18,16 @@ _VLOGAN_OUTPUT = [
     "vir_global.sdb",
 ]
 
+_VLOGAN_RUNFILES = [paths.join(local_paths.vcs_home,runfile) for runfile in[
+    "bin/synopsys_bc.setup",
+    "bin/sysclog_header.sh",
+    "bin/synopsys_sim.setup",
+    "bin/synopsys_mh.setup",
+    "bin/getsimarch",
+    "bin/vcsMsgReport",
+    "bin/common",
+]]
+
 BlockInfo = provider(
     doc = "Provides sdc_files, and a libs dict. Each lib is a struct with a vlog_files depset and a vhdl_files depset.",
     fields = ["libs", "sdc_files"]
@@ -153,8 +163,10 @@ def _test_impl(ctx):
         args.add("-sverilog")
         args.add_all(vlog_files)
 
-        output_files = [ctx.actions.declare_file(out_file_path) for out_file_path in _VLOGAN_OUTPUT]
+        output_files = [ctx.actions.declare_file(file_path) for file_path in _VLOGAN_OUTPUT]
+        input_files = [ctx.actions.declare_file(file_path) for file_path in _VLOGAN_RUNFILES]
         ctx.actions.run(
+            inputs = input_files,
             outputs = output_files,
             executable = vlogan,
             arguments = [args],
