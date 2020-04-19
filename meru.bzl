@@ -1,4 +1,6 @@
 load("@bazel_json//lib:json_parser.bzl", "json_parse")
+load("@local_paths//:local_paths.bzl", "local_paths")
+load("@bazel_skylib//lib:paths.bzl", "paths")
 
 _VLOGAN_OUTPUT = [
     "AllModulesSkeletons.sdb",
@@ -124,16 +126,23 @@ test_attrs = {
             doc = "Elaboration timescale flag",
             default = "1ns/1ns",
         ),
-        "_vlogan" : attr.label(
-            default = "$(VCS_HOME)/bin/vlogan",
-        ),
     }
 
 # Note that you must use actions.args for the arguments of the compiler 
 def _test_impl(ctx): 
+    
+    # If VCS environment variables not set, fail.
+    if not local_paths.vcs_home:
+        fail(msg = "VCS_HOME environment variable not set. Add \"bazel build --action_env VCS_HOME=<path> to /etc/bazel.bazelrc\"")
+    if not local_paths.vcs_license:
+        fail(msg = "VCS_LICENSE environment variable not set. Add \"bazel build --action_env VCS_LICENSE=<path> to /etc/bazel.bazelrc\"")
+
+    vlogan = Label(paths.join(local_paths.vcs_home, "bin/vlogan"))
+
     defines = json_parse(ctx.attr.defines)
     libs = _get_transitive_libs([], [], ctx.attr.lib, ctx.attr.blocks) # Merge libs of dependencies into single dict
-
+   
+    Setup paths to 
     for lib_key in libs:
         args = ctx.actions.args()
         vlog_files = libs[lib_key].vlog_files
@@ -141,7 +150,7 @@ def _test_impl(ctx):
         ctx.actions.run(
             outputs = _VLOGAN_OUTPUT,
             inputs = vlog_files,
-            executable = ctx.attr._vlogan,
+            executable = vlogan,
             arguments = args,
             mnemonic = "Vlogan",
             progress_message = "Analysing verilog files.",
