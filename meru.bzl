@@ -146,11 +146,13 @@ def _test_impl(ctx):
         args = ctx.actions.args()
         vlog_files = libs[lib_key].vlog_files
         args.add_all(vlog_files)
+
         output_files = [ctx.actions.declare_file(out_file_path) for out_file_path in _VLOGAN_OUTPUT]
         ctx.actions.run(
             outputs = output_files,
             executable = vlogan,
             arguments = [args],
+            env = {"VCS_HOME" : local_paths.vcs_home},
             mnemonic = "Vlogan",
             progress_message = "Analysing verilog files.",
         )
