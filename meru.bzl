@@ -145,6 +145,12 @@ def _test_impl(ctx):
     for lib_key in libs:
         args = ctx.actions.args()
         vlog_files = libs[lib_key].vlog_files
+        args.add("-full64")
+        args.add("-work {}".format(lib_key))
+        args.add("+incdir+{}".format(paths.join(local_paths.vcs_home), "etc/uvm/src"))
+        args.add(paths.join(local_paths.vcs_home, "etc/uvm/uvm_pkg.sv"))
+        args.add("-ntb_opts uvm")
+        args.add("-sverilog")
         args.add_all(vlog_files)
 
         output_files = [ctx.actions.declare_file(out_file_path) for out_file_path in _VLOGAN_OUTPUT]
