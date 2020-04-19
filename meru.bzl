@@ -1,6 +1,6 @@
 load("@bazel_json//lib:json_parser.bzl", "json_parse")
 load("@local_paths//:local_paths.bzl", "local_paths")
-load("@bazel_skylib//lib:paths.bzl", "paths")
+    load("@bazel_skylib//lib:paths.bzl", "paths")
 
 _VLOGAN_OUTPUT = [
     "AllModulesSkeletons.sdb",
@@ -17,16 +17,6 @@ _VLOGAN_OUTPUT = [
     "str.info.db",
     "vir_global.sdb",
 ]
-
-_VLOGAN_RUNFILES = [paths.join(local_paths.vcs_home,runfile) for runfile in[
-    "bin/synopsys_bc.setup",
-    "bin/sysclog_header.sh",
-    "bin/synopsys_sim.setup",
-    "bin/synopsys_mh.setup",
-    "bin/getsimarch",
-    "bin/vcsMsgReport",
-    "bin/common",
-]]
 
 BlockInfo = provider(
     doc = "Provides sdc_files, and a libs dict. Each lib is a struct with a vlog_files depset and a vhdl_files depset.",
@@ -142,12 +132,12 @@ test_attrs = {
 def _test_impl(ctx): 
     
     # If VCS environment variables not set, fail.
-    if local_paths.vcs_home == None:
-        fail(msg = "VCS_HOME environment variable not set. Add \"bazel build --action_env VCS_HOME=<path> to /etc/bazel.bazelrc\"")
-    if local_paths.vcs_license == None:
-        fail(msg = "VCS_LICENSE environment variable not set. Add \"bazel build --action_env VCS_LICENSE=<path> to /etc/bazel.bazelrc\"")
+    # if local_paths.vcs_home == None:
+        # fail(msg = "VCS_HOME environment variable not set. Add \"bazel build --action_env VCS_HOME=<path> to /etc/bazel.bazelrc\"")
+    # if local_paths.vcs_license == None:
+        # fail(msg = "VCS_LICENSE environment variable not set. Add \"bazel build --action_env VCS_LICENSE=<path> to /etc/bazel.bazelrc\"")
 
-    vlogan = paths.join(local_paths.vcs_home, "bin/vlogan")
+    vlogan = paths.join("@vcs//bin/vlogan")
 
     defines = json_parse(ctx.attr.defines)
     libs = _get_transitive_libs([], [], ctx.attr.lib, ctx.attr.blocks) # Merge libs of dependencies into single dict
@@ -164,9 +154,9 @@ def _test_impl(ctx):
         args.add_all(vlog_files)
 
         output_files = [ctx.actions.declare_file(file_path) for file_path in _VLOGAN_OUTPUT]
-        input_files = [ctx.actions.declare_file(file_path) for file_path in _VLOGAN_RUNFILES]
+        
         ctx.actions.run(
-            tools = input_files,
+            inputs = input_files,
             outputs = output_files,
             executable = vlogan,
             arguments = [args],
