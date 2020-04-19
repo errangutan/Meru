@@ -126,6 +126,9 @@ test_attrs = {
             doc = "Elaboration timescale flag",
             default = "1ns/1ns",
         ),
+        "_vlogan" : attr.label(
+            default = "@vcs//:vlogan"
+        )
     }
 
 # Note that you must use actions.args for the arguments of the compiler 
@@ -137,7 +140,8 @@ def _test_impl(ctx):
     # if local_paths.vcs_license == None:
         # fail(msg = "VCS_LICENSE environment variable not set. Add \"bazel build --action_env VCS_LICENSE=<path> to /etc/bazel.bazelrc\"")
 
-    vlogan = paths.join("@vcs//bin/vlogan")
+    print(ctx.attr._vlogan)
+    vlogan = ctx.attr._vlogan.files.to_list()[0]
 
     defines = json_parse(ctx.attr.defines)
     libs = _get_transitive_libs([], [], ctx.attr.lib, ctx.attr.blocks) # Merge libs of dependencies into single dict

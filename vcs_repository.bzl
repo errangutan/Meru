@@ -1,7 +1,13 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
 
-def _file_group(name, files):
-    return "filegroup(name = {}, files = {})\n".format(name, files)
+def _file_group(name, srcs):
+    return """
+filegroup(
+    name = "{}",
+    srcs = {},
+    visibility = ["//visibility:public"]
+)
+    \n""".format(name, srcs)
 
 def _local_paths(ctx):
     
@@ -17,9 +23,6 @@ def _local_paths(ctx):
     # Save struct values in struct called paths.
     paths_content = "local_paths = struct({})".format(paths_struct_content)
     ctx.file("local_paths.bzl", content = paths_content)
-    
-    # Write BUILD file, so repo will be accessabe as package
-    ctx.file("BUILD", content = "")
 
 def _vcs_repository_impl(ctx):
     environ = ctx.os.environ
@@ -32,7 +35,7 @@ def _vcs_repository_impl(ctx):
     ctx.file("WORKSPACE", "")
 
     # Write BUILD file, so repo will be accessabe as package
-    ctx.file("BUILD", content = "")
+    ctx.file("BUILD", content = _file_group("vlogan", ["vcs/bin/vlogan"]))
 
 vcs_repository = repository_rule(
     implementation = _vcs_repository_impl,
