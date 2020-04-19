@@ -158,7 +158,10 @@ def _test_impl(ctx):
             outputs = output_files,
             executable = vlogan,
             arguments = [args],
-            env = {"HOME" : local_paths.vcs_home},
+            env = {
+                "VCS_HOME" : local_paths.vcs_home,
+                "HOME" : "/dev/null"
+            },
             mnemonic = "Vlogan",
             progress_message = "Analysing verilog files.",
         )
