@@ -164,7 +164,7 @@ def _test_impl(ctx):
         vlog_files = libs[lib_key].vlog_files
         args.add("-full64")
         args.add_all(["-work",lib_key])
-        args.add("+incdir+{}".format(local_paths.vcs_home, "etc/uvm/src"))
+        args.add("+incdir+{}".format(local_paths.vcs_home + "etc/uvm/src"))
         args.add(uvm_pkg)
         args.add_all(["-ntb_opts","uvm"])
         args.add("-sverilog")
