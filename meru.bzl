@@ -175,7 +175,7 @@ def _test_impl(ctx):
         output_files = [ctx.actions.declare_file(file_path) for file_path in _VLOGAN_OUTPUT]
 
         ctx.actions.run(
-            inputs = depset(uvm_pkg, transitive=[ctx.attr._vlogan_runfiles.files]),
+            inputs = depset([uvm_pkg], transitive=[ctx.attr._vlogan_runfiles.files]),
             outputs = output_files,
             executable = vlogan,
             arguments = [args],
