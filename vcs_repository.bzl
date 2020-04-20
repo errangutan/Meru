@@ -34,7 +34,8 @@ def _vcs_repository_impl(ctx):
     ctx.file("WORKSPACE", "")
     BUILD_components = [
         _file_group("vlogan", ["vcs/bin/vlogan"]),
-        _file_group("vlogan_runfiles", ["vcs/etc/uvm/src/uvm_macros.svh"])
+        _file_group("vlogan_runfiles", ["vcs/etc/uvm/uvm_macros.svh"]),
+        _file_group("uvm_pkg", ["vcs/etc/uvm/uvm_pkg.sv"])
     ]
 
     # Write BUILD file, so repo will be accessabe as package

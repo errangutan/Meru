@@ -131,8 +131,14 @@ test_attrs = {
         ),
         "_vlogan_runfiles" : attr.label(
             default = "@vcs//:vlogan_runfiles"
+        ),
+        "_uvm_pkg" : attr.label(
+            default = "@vcs//:uvm_pkg"
         )
     }
+
+def _get_file_obj(filegroup_target):
+    return filegroup_target.files.to_list()[0]
 
 # Note that you must use actions.args for the arguments of the compiler 
 def _test_impl(ctx): 
@@ -144,19 +150,20 @@ def _test_impl(ctx):
         # fail(msg = "VCS_LICENSE environment variable not set. Add \"bazel build --action_env VCS_LICENSE=<path> to /etc/bazel.bazelrc\"")
 
     print(ctx.attr._vlogan)
-    vlogan = ctx.attr._vlogan.files.to_list()[0]
+    vlogan = _get_file_obj(ctx.attr._vlogan)
+    uvm_pkg = _get_file_obj(ctx.attr._uvm_pkg)
 
     defines = json_parse(ctx.attr.defines)
     libs = _get_transitive_libs([], [], ctx.attr.lib, ctx.attr.blocks) # Merge libs of dependencies into single dict
-    
+
     for lib_key in libs:
         args = ctx.actions.args()
         vlog_files = libs[lib_key].vlog_files
         args.add("-full64")
-        args.add("-work {}".format(lib_key))
-        args.add("+incdir+{}".format(paths.join(local_paths.vcs_home), "etc/uvm/src"))
-        args.add(paths.join(local_paths.vcs_home, "etc/uvm/uvm_pkg.sv"))
-        args.add("-ntb_opts uvm")
+        args.add_all(["-work",lib_key])
+        args.add("+incdir+{}".format(local_paths.vcs_home, "etc/uvm/src"))
+        args.add(uvm_pkg)
+        args.add_all(["-ntb_opts","uvm"])
         args.add("-sverilog")
         args.add_all(vlog_files)
 
