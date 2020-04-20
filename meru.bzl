@@ -162,7 +162,7 @@ def _test_impl(ctx):
     for lib_key in libs:
 
         args = ctx.actions.args()
-        vlog_files = libs[lib_key].vlog_files
+        vlog_files = libs[lib_key].vlog_files.to_list()
         print (vlog_files)
         args.add("-full64")
         args.add_all(["-work",lib_key])
