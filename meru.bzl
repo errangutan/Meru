@@ -29,7 +29,9 @@ RegsInfo = provider(
 
 def _get_transitive_libs(vlog_files, vhdl_files, files_lib, blocks):
     lib_dict_list = [block[BlockInfo].libs for block in blocks]
-
+    vlog_files = [f.files for f in vlog_files]
+    vlog_files = [f.files for f in vhdl_files]
+    
     # Get all lib names in side lib dicts
     libs = [files_lib]
     for lib_dict in lib_dict_list:
@@ -157,6 +159,7 @@ def _test_impl(ctx):
     libs = _get_transitive_libs([], [], ctx.attr.lib, ctx.attr.blocks) # Merge libs of dependencies into single dict
 
     for lib_key in libs:
+
         args = ctx.actions.args()
         vlog_files = libs[lib_key].vlog_files
         args.add("-full64")
