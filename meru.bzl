@@ -29,9 +29,10 @@ RegsInfo = provider(
 
 def _get_transitive_libs(vlog_files, vhdl_files, files_lib, blocks):
     lib_dict_list = [block[BlockInfo].libs for block in blocks]
+
     vlog_files = [f.files for f in vlog_files]
-    vlog_files = [f.files for f in vhdl_files]
-    
+    vhdl_files = [f.files for f in vhdl_files]
+
     # Get all lib names in side lib dicts
     libs = [files_lib]
     for lib_dict in lib_dict_list:
@@ -162,6 +163,7 @@ def _test_impl(ctx):
 
         args = ctx.actions.args()
         vlog_files = libs[lib_key].vlog_files
+        print (vlog_files)
         args.add("-full64")
         args.add_all(["-work",lib_key])
         args.add("+incdir+{}".format(local_paths.vcs_home + "etc/uvm"))
