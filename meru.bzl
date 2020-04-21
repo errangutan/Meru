@@ -141,7 +141,7 @@ test_attrs = {
     }
 
 def _link_outputs(ctx, outputs, command):
-    link_dict = {output:"{}/{}{}".format(ctx.bin_dir.path,"$INSTALLDIR",output) for output in outputs}
+    link_dict = {output:"{}/{}/{}".format(ctx.bin_dir.path,ctx.label.package,output) for output in outputs}
     bash_links = ' '.join(["[{}]={}".format(k,v) for k,v in link_dict.items()])
     command = """
     {command} && {{
@@ -151,6 +151,7 @@ def _link_outputs(ctx, outputs, command):
             if [ -d ${{LINKS[$l]}}]; then
                 rm -r ${{LINKS[$l]}}
             fi
+            echo $(realpath $l) ${{LINKS[$l]}}
             ln -snf $(realpath $l) ${{LINKS[$l]}} 
         done\n
     }}
@@ -173,7 +174,6 @@ def _test_impl(ctx):
     # if local_paths.vcs_license == None:
         # fail(msg = "VCS_LICENSE environment variable not set. Add \"bazel build --action_env VCS_LICENSE=<path> to /etc/bazel.bazelrc\"")
 
-    print(ctx.attr._vlogan)
     vlogan = _get_file_obj(ctx.attr._vlogan)
     uvm_pkg = _get_file_obj(ctx.attr._uvm_pkg)
 
@@ -184,7 +184,6 @@ def _test_impl(ctx):
 
         args = ctx.actions.args()
         vlog_files = [item.to_list()[0] for item in libs[lib_key].vlog_files.to_list()]
-        print (vlog_files)
         args.add("-full64")
         args.add_all(["-work",lib_key])
         args.add("+incdir+{}".format(local_paths.vcs_home + "etc/uvm"))
