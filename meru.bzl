@@ -132,6 +132,9 @@ test_attrs = {
         "_vlogan" : attr.label(
             default = "@vcs//:vlogan"
         ),
+        "_vcs" : attr.label(
+            default = "@vcs//:vcs"
+        ),
         "_vlogan_runfiles" : attr.label(
             default = "@vcs//:vlogan_runfiles"
         ),
@@ -209,10 +212,25 @@ def _test_impl(ctx):
             progress_message = "Analysing verilog files.",
         )
         
-        shit = ctx.actions.declare_file("shit")
-        ctx.actions.write(shit, content="")
-        return [DefaultInfo(executable=shit, files=depset(output_files))]
+    simv = ctx.actions.declare_file("simv")
+    elab_args = ctx.actions.args()
+    elab_args.add("-full64")
+    elab_args.add("-timescale=1ns/1ns")
+    elab_args.add("-CFLAGS")
+    elab_args.add("-DVCS")
+    elab_args.add("-debug_access+all")
+    elab_args.add("/usr/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm/dpi/uvm_dpi.cc")
+    elab_args.add_all(["-j1", ctx.attr.top])
+    elab_args.add_all(["-o", simv])
+    vcs = _get_file_obj(ctx.attr._vcs)
+    ctx.actions.run(
+        outputs = [simv],
+        inputs = [output_files],
+        executable = [],
+        arguments = elab_args
+    )
 
+    return [DefaultInfo(executable=simv)]
 
 sim_test = rule(
     doc = "Verification test",
