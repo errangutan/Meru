@@ -34,6 +34,7 @@ def _vcs_repository_impl(ctx):
     ctx.file("WORKSPACE", "")
     BUILD_components = [
         _file_group("vlogan", ["vcs/bin/vlogan"]),
+        _file_group("vcs", ["vcs/bin/vcs"]),
         _file_group("vlogan_runfiles", ["vcs/etc/uvm/uvm_macros.svh"]),
         _file_group("uvm_pkg", ["vcs/etc/uvm/uvm_pkg.sv"])
     ]
