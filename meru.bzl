@@ -148,9 +148,7 @@ def _link_outputs(ctx, outputs, command):
         declare -A LINKS=({bash_links})
         for l in "${{!LINKS[@]}}"
         do
-            if [ -d ${{LINKS[$l]}}]; then
-                rm -r ${{LINKS[$l]}}
-            fi
+            rm -r ${{LINKS[$l]}}
             echo $(realpath $l) ${{LINKS[$l]}}
             ln -snf $(realpath $l) ${{LINKS[$l]}} 
         done\n
