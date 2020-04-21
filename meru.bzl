@@ -144,15 +144,15 @@ def _link_outputs(ctx, outputs, command):
 
     link_dict = {output:ctx.bin_dir.path+"/"+output for output in outputs}
     bash_links = ' '.join(["[{}]={}".format(k,v) for k,v in link_dict.items()])
-    print (bash_links)
-    command = """
-    {command}
 
-    declare -A LINKS=({bash_links})
-    for l in "${{!LINKS[@]}}"
-    do
-        link $l ${{LINKS[$l]}} 
-    done\n
+    command = """
+    {command} && {{
+        declare -A LINKS=({bash_links})
+        for l in "${{!LINKS[@]}}"
+        do
+            link $l ${{LINKS[$l]}} 
+        done\n
+    }}
     """.format(
         command=command,
         bash_links=bash_links
