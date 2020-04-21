@@ -3,19 +3,19 @@ load("@vcs//:local_paths.bzl", "local_paths")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 
 _VLOGAN_OUTPUT = [
-    "AllModulesSkeletons.sdb",
-    "debug_dump",
-    "dve.sdb",
-    "modfilename.db",
-    "str.index.db",
-    "vir.sdb",
-    "vloganopts.db",
-    "compat.db",
-    "dumpcheck.db",
-    "make.vlogan",
-    "str.db",
-    "str.info.db",
-    "vir_global.sdb",
+    "AN.DB/AllModulesSkeletons.sdb",
+    "AN.DB/debug_dump",
+    "AN.DB/dve.sdb",
+    "AN.DB/modfilename.db",
+    "AN.DB/str.index.db",
+    "AN.DB/vir.sdb",
+    "AN.DB/vloganopts.db",
+    "AN.DB/compat.db",
+    "AN.DB/dumpcheck.db",
+    "AN.DB/make.vlogan",
+    "AN.DB/str.db",
+    "AN.DB/str.info.db",
+    "AN.DB/vir_global.sdb",
 ]
 
 BlockInfo = provider(
@@ -140,6 +140,26 @@ test_attrs = {
         )
     }
 
+def _link_outputs(ctx, outputs, command):
+
+    link_dict = {output:ctx.bin_dir.path+"/"+output for output in outputs}
+    bash_links = ' '.join(["[{}]={}".format(k,v) for k,v in link_dict.items()])
+    print (bash_links)
+    command = """
+    {command}
+
+    declare -A LINKS=({bash_links})
+    for l in "${{!LINKS[@]}}"
+    do
+        link $l ${{LINKS[$l]}} 
+    done\n
+    """.format(
+        command=command,
+        bash_links=bash_links
+    )
+
+    return command
+
 def _get_file_obj(filegroup_target):
     return filegroup_target.files.to_list()[0]
 
@@ -174,10 +194,14 @@ def _test_impl(ctx):
 
         output_files = [ctx.actions.declare_file(file_path) for file_path in _VLOGAN_OUTPUT]
 
-        ctx.actions.run(
+        ctx.actions.run_shell(
             inputs = depset([uvm_pkg] + vlog_files, transitive=[ctx.attr._vlogan_runfiles.files]),
             outputs = output_files,
-            executable = vlogan,
+            command = _link_outputs(
+                ctx,
+                ["AN.DB"],
+                "%s $@" % vlogan.path
+            ),
             arguments = [args],
             env = {
                 "VCS_HOME" : local_paths.vcs_home,
