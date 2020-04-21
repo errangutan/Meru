@@ -141,8 +141,7 @@ test_attrs = {
     }
 
 def _link_outputs(ctx, outputs, command):
-
-    link_dict = {output:"{}/{}/{}".format(ctx.bin_dir.path,"$INSTALLDIR",output) for output in outputs}
+    link_dict = {output:"{}/{}{}".format(ctx.bin_dir.path,"$INSTALLDIR",output) for output in outputs}
     bash_links = ' '.join(["[{}]={}".format(k,v) for k,v in link_dict.items()])
     command = """
     {command} && {{
