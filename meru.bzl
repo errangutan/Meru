@@ -144,13 +144,14 @@ def _link_outputs(ctx, outputs, command):
 
     link_dict = {output:ctx.bin_dir.path+"/"+output for output in outputs}
     bash_links = ' '.join(["[{}]={}".format(k,v) for k,v in link_dict.items()])
-
     command = """
     {command} && {{
+        #ln -s $(realpath shit) bazel-out/k8-fastbuild/bin/fuck
         declare -A LINKS=({bash_links})
         for l in "${{!LINKS[@]}}"
         do
-            link $l ${{LINKS[$l]}} 
+            rm ${{LINKS[$l]}} -r
+            ln -sf $(realpath $l) ${{LINKS[$l]}} 
         done\n
     }}
     """.format(
