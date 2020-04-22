@@ -186,7 +186,7 @@ def _test_impl(ctx):
         args = ctx.actions.args()
         vlog_files = [item.to_list()[0] for item in libs[lib_key].vlog_files.to_list()]
         args.add("-full64")
-        args.add_all(["-work",lib_key])
+        args.add_all(["-work","WORK"])
         args.add("+incdir+{}".format(local_paths.vcs_home + "etc/uvm"))
         args.add(uvm_pkg)
         args.add_all(["-ntb_opts","uvm"])
@@ -225,9 +225,13 @@ def _test_impl(ctx):
     vcs = _get_file_obj(ctx.attr._vcs)
     ctx.actions.run(
         outputs = [simv],
-        inputs = [output_files],
-        executable = [],
-        arguments = elab_args
+        inputs = output_files,
+        executable = vcs,
+        arguments = [elab_args],
+	env = {
+            "VCS_HOME" : local_paths.vcs_home,
+            "HOME" : "/dev/null"
+        },
     )
 
     return [DefaultInfo(executable=simv)]
