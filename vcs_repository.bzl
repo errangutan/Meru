@@ -46,7 +46,7 @@ vcs_repository = repository_rule(
     implementation = _vcs_repository_impl,
     environ = [
         "VCS_HOME",
-        "VCS_LICENSE"
+        "LM_LICENSE_FILE",
     ],
     configure = True,
     local = True

@@ -207,8 +207,8 @@ def _test_impl(ctx):
     elab_args.add_all(["-j1", ctx.attr.top])
     elab_args.add_all(["-o", simv])
     vcs = _get_file_obj(ctx.attr._vcs)
-    command = "tar -xf {andb} -C ./; {vcs} $@".format(
-        andb = AN_DB_tar.path + "shit",
+    command = "tar -xf {andb}; {vcs} $@".format(
+        andb = AN_DB_tar.path,
         vcs = vcs.path
     )
     print(command)
@@ -219,6 +219,7 @@ def _test_impl(ctx):
         arguments = [elab_args],
         env = {
             "VCS_HOME" : local_paths.vcs_home,
+            "LM_LICENSE_FILE" : local_paths.lm_license_file,
             "HOME" : "/dev/null"
         },
     )
