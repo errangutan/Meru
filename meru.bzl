@@ -195,29 +195,35 @@ def _test_impl(ctx):
             progress_message = "Analysing verilog files.",
         )
         
-    return [DefaultInfo(executable=AN_DB_tar)]
-    # simv = ctx.actions.declare_file("simv")
-    # elab_args = ctx.actions.args()
-    # elab_args.add("-full64")
-    # elab_args.add("-timescale=1ns/1ns")
-    # elab_args.add("-CFLAGS")
-    # elab_args.add("-DVCS")
-    # elab_args.add("-debug_access+all")
-    # elab_args.add("/usr/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm/dpi/uvm_dpi.cc")
-    # elab_args.add_all(["-j1", ctx.attr.top])
-    # elab_args.add_all(["-o", simv])
-    # vcs = _get_file_obj(ctx.attr._vcs)
-    # ctx.actions.run(
-    #     outputs = [simv],
-    #     inputs = output_files,
-    #     executable = vcs,
-    #     arguments = [elab_args],
-    #     env = {
-    #         "VCS_HOME" : local_paths.vcs_home,
-    #         "HOME" : "/dev/null"
-    #     },
-    # )
+    
+    simv = ctx.actions.declare_file("simv")
+    elab_args = ctx.actions.args()
+    elab_args.add("-full64")
+    elab_args.add("-timescale=1ns/1ns")
+    elab_args.add("-CFLAGS")
+    elab_args.add("-DVCS")
+    elab_args.add("-debug_access+all")
+    elab_args.add("/usr/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm/dpi/uvm_dpi.cc")
+    elab_args.add_all(["-j1", ctx.attr.top])
+    elab_args.add_all(["-o", simv])
+    vcs = _get_file_obj(ctx.attr._vcs)
+    command = "tar -xf {andb} -C ./; {vcs} $@".format(
+        andb = AN_DB_tar.path + "shit",
+        vcs = vcs.path
+    )
+    print(command)
+    ctx.actions.run_shell(
+        outputs = [simv],
+        inputs = depset([AN_DB_tar], transitive=[ctx.attr._vcs.files]),
+        command = command,
+        arguments = [elab_args],
+        env = {
+            "VCS_HOME" : local_paths.vcs_home,
+            "HOME" : "/dev/null"
+        },
+    )
 
+    return [DefaultInfo(executable=simv)]
     
 
 sim_test = rule(
