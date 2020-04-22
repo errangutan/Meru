@@ -2,22 +2,6 @@ load("@bazel_json//lib:json_parser.bzl", "json_parse")
 load("@vcs//:local_paths.bzl", "local_paths")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 
-_VLOGAN_OUTPUT = [
-    "AN.DB/AllModulesSkeletons.sdb",
-    "AN.DB/debug_dump",
-    "AN.DB/dve.sdb",
-    "AN.DB/modfilename.db",
-    "AN.DB/str.index.db",
-    "AN.DB/vir.sdb",
-    "AN.DB/vloganopts.db",
-    "AN.DB/compat.db",
-    "AN.DB/dumpcheck.db",
-    "AN.DB/make.vlogan",
-    "AN.DB/str.db",
-    "AN.DB/str.info.db",
-    "AN.DB/vir_global.sdb",
-]
-
 BlockInfo = provider(
     doc = "Provides sdc_files, and a libs dict. Each lib is a struct with a vlog_files depset and a vhdl_files depset.",
     fields = ["libs", "sdc_files"]
@@ -193,15 +177,14 @@ def _test_impl(ctx):
         args.add("-sverilog")
         args.add_all(vlog_files)
 
-        output_files = [ctx.actions.declare_file(file_path) for file_path in _VLOGAN_OUTPUT]
-
+        AN_DB_tar = ctx.actions.declare_file("AN.DB.tar")
+        print(AN_DB_tar.path)
         ctx.actions.run_shell(
             inputs = depset([uvm_pkg] + vlog_files, transitive=[ctx.attr._vlogan_runfiles.files, ctx.attr._vlogan.files]),
-            outputs = output_files,
-            command = _link_outputs(
-                ctx,
-                ["AN.DB"],
-                "%s $@" % vlogan.path
+            outputs = [AN_DB_tar],
+            command = "{vlogan} $@; tar -cvf {andb} AN.DB".format(
+                vlogan = vlogan.path,
+                andb = paths.join(ctx.bin_dir.path, ctx.label.package, "AN.DB.tar")
             ),
             arguments = [args],
             env = {
@@ -212,29 +195,30 @@ def _test_impl(ctx):
             progress_message = "Analysing verilog files.",
         )
         
-    simv = ctx.actions.declare_file("simv")
-    elab_args = ctx.actions.args()
-    elab_args.add("-full64")
-    elab_args.add("-timescale=1ns/1ns")
-    elab_args.add("-CFLAGS")
-    elab_args.add("-DVCS")
-    elab_args.add("-debug_access+all")
-    elab_args.add("/usr/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm/dpi/uvm_dpi.cc")
-    elab_args.add_all(["-j1", ctx.attr.top])
-    elab_args.add_all(["-o", simv])
-    vcs = _get_file_obj(ctx.attr._vcs)
-    ctx.actions.run(
-        outputs = [simv],
-        inputs = output_files,
-        executable = vcs,
-        arguments = [elab_args],
-	env = {
-            "VCS_HOME" : local_paths.vcs_home,
-            "HOME" : "/dev/null"
-        },
-    )
+    return [DefaultInfo(executable=AN_DB_tar)]
+    # simv = ctx.actions.declare_file("simv")
+    # elab_args = ctx.actions.args()
+    # elab_args.add("-full64")
+    # elab_args.add("-timescale=1ns/1ns")
+    # elab_args.add("-CFLAGS")
+    # elab_args.add("-DVCS")
+    # elab_args.add("-debug_access+all")
+    # elab_args.add("/usr/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm/dpi/uvm_dpi.cc")
+    # elab_args.add_all(["-j1", ctx.attr.top])
+    # elab_args.add_all(["-o", simv])
+    # vcs = _get_file_obj(ctx.attr._vcs)
+    # ctx.actions.run(
+    #     outputs = [simv],
+    #     inputs = output_files,
+    #     executable = vcs,
+    #     arguments = [elab_args],
+    #     env = {
+    #         "VCS_HOME" : local_paths.vcs_home,
+    #         "HOME" : "/dev/null"
+    #     },
+    # )
 
-    return [DefaultInfo(executable=simv)]
+    
 
 sim_test = rule(
     doc = "Verification test",
