@@ -208,25 +208,24 @@ def _test_impl(ctx):
     elab_args.add_all(["-j1", ctx.attr.top])
     elab_args.add_all(["-o", simv])
   
-    logs = ctx.actions.declare_directory("logs")
+    daidir = ctx.actions.declare_directory("simv.daidir")
 
     vcs = _get_file_obj(ctx.attr._vcs)
-    command = "tar -xf {andb}; {vcs} -full64 -timescale=1ns/1ns -CFLAGS -DVCS -debug_access+all /usr/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm/dpi/uvm_dpi.cc -j1 top_tb -o {simv} -l {logs}".format(
+    command = "tar -xf {andb}; {vcs} -full64 -timescale=1ns/1ns -CFLAGS -DVCS -debug_access+all /usr/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm/dpi/uvm_dpi.cc -j1 top_tb -o {simv}".format(
         andb = AN_DB_tar.path,
         vcs = vcs.path,
-	simv = simv.path,
-	logs = logs
+	    simv = simv.path,
     )
     print(command)
     ctx.actions.run_shell(
-        outputs = [simv, logs],
+        outputs = [simv, daidir],
         inputs = depset([AN_DB_tar], transitive=[ctx.attr._vcs.files]),
         command = command,
         arguments = [],
         env = {
             "VCS_HOME" : local_paths.vcs_home,
             "LM_LICENSE_FILE" : local_paths.lm_license_file,
-	    "UVM_HOME" : "/usr/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm",
+	        "UVM_HOME" : "/usr/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm",
             "LANG" : "C.UTF-8",
             "OLDPWD" : "/sec_storage/general/verification/empty_env",
             "SNPSLMD_LICENSE_FILE" : "27020@10.0.1.4",
@@ -249,10 +248,30 @@ def _test_impl(ctx):
             "_" : "/usr/bin/env",
         },
     )
+    
+    daidir_tar = ctx.actions.declare_file("simv.daidir.tar")
+
+    ctx.actions.run(
+        inputs = [daidir],
+        outputs = [daidir_tar],
+        executable = "tar",
+        arguments = ["-cvhf", daidir_tar.path,"-C", paths.join(ctx.bin_dir.path, ctx.label.package), "simv.daidir"],
+        mnemonic = "TarDaidir",
+        progress_message = "taring: {} {}".format(daidir_tar.path, daidir.path)
+    )
 
     run_simv = ctx.actions.declare_file("run_simv")
+    ctx.actions.write(run_simv, content="""
+    #!/bin/bash
+    cd {package}
+    tar -xf simv.daidir.tar
+    simv $@ || exit 1
+    """.format(package=ctx.label.package))
 
-    return [DefaultInfo(executable=simv)]
+    return [DefaultInfo(
+        executable=run_simv,
+        runfiles=ctx.runfiles(files = [simv, daidir_tar])
+    )]
     
 
 sim_test = rule(
