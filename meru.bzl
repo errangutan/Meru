@@ -189,7 +189,8 @@ def _test_impl(ctx):
             arguments = [args],
             env = {
                 "VCS_HOME" : local_paths.vcs_home,
-                "HOME" : "/dev/null"
+                "HOME" : "/dev/null",
+		"UVM_HOME" : "/usr/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm"
             },
             mnemonic = "Vlogan",
             progress_message = "Analysing verilog files.",
@@ -206,23 +207,50 @@ def _test_impl(ctx):
     elab_args.add("/usr/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm/dpi/uvm_dpi.cc")
     elab_args.add_all(["-j1", ctx.attr.top])
     elab_args.add_all(["-o", simv])
+  
+    logs = ctx.actions.declare_directory("logs")
+
     vcs = _get_file_obj(ctx.attr._vcs)
-    command = "tar -xf {andb}; {vcs} $@".format(
+    command = "tar -xf {andb}; {vcs} -full64 -timescale=1ns/1ns -CFLAGS -DVCS -debug_access+all /usr/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm/dpi/uvm_dpi.cc -j1 top_tb -o {simv} -l {logs}".format(
         andb = AN_DB_tar.path,
-        vcs = vcs.path
+        vcs = vcs.path,
+	simv = simv.path,
+	logs = logs
     )
     print(command)
     ctx.actions.run_shell(
-        outputs = [simv],
+        outputs = [simv, logs],
         inputs = depset([AN_DB_tar], transitive=[ctx.attr._vcs.files]),
         command = command,
-        arguments = [elab_args],
+        arguments = [],
         env = {
             "VCS_HOME" : local_paths.vcs_home,
             "LM_LICENSE_FILE" : local_paths.lm_license_file,
-            "HOME" : "/dev/null"
+	    "UVM_HOME" : "/usr/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm",
+            "LANG" : "C.UTF-8",
+            "OLDPWD" : "/sec_storage/general/verification/empty_env",
+            "SNPSLMD_LICENSE_FILE" : "27020@10.0.1.4",
+            "S_COLORS" : "auto",
+            "XDG_SESSION_ID" : "533",
+            "USER" : "errang",
+            "PWD" : "/home/errang/Meru/empty_env/env_src",
+            "HOME" : "/home/errang",
+            "SSH_CLIENT" : "93.172.146.34 46772 22",
+            "XDG_DATA_DIRS" : "/usr/local/share:/usr/share:/var/lib/snapd/desktop",
+            "SSH_TTY" : "/dev/pts/6",
+            "MAIL" : "/var/mail/errang",
+            "TERM" : "xterm-256color",
+            "SHELL" : "/bin/bash",
+            "SHLVL" : "1",
+            "LOGNAME" : "errang",
+            "DBUS_SESSION_BUS_ADDRESS" : "unix:path=/run/user/1004/bus",
+            "XDG_RUNTIME_DIR" : "/run/user/1004",
+            "PATH" : "/tangetools-master/tracefile:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+            "_" : "/usr/bin/env",
         },
     )
+
+    run_simv = ctx.actions.declare_file("run_simv")
 
     return [DefaultInfo(executable=simv)]
     
