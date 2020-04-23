@@ -312,7 +312,8 @@ def _test_impl(ctx):
     ctx.actions.write(run_simv, content="""
     #!/bin/bash
     cd {package}
-    simv -exitstatus $@ || exit 1
+    simv -exitstatus $@
+    echo $?
     """.format(package=ctx.label.package))
 
     return [DefaultInfo(
