@@ -313,7 +313,6 @@ def _test_impl(ctx):
     #!/bin/bash
     cd {package}
     simv -exitstatus $@
-    echo $?
     """.format(package=ctx.label.package))
 
     return [DefaultInfo(
