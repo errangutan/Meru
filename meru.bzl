@@ -235,6 +235,10 @@ def _test_impl(ctx):
     defines = json_parse(ctx.attr.defines)
     libs = _get_transitive_libs([], [], ctx.attr.lib, ctx.attr.blocks) # Merge libs of dependencies into single dict
 
+    out_dir = paths.join(ctx.bin_dir.path, ctx.label.package)
+    cd_path_fix = "/".join(len(out_dir.split("/"))*[".."])
+    print (cd_path_fix)
+
     for lib_key in libs:
 
         args = ctx.actions.args()
@@ -242,25 +246,27 @@ def _test_impl(ctx):
         args.add("-full64")
         args.add_all(["-work","WORK"])
         args.add("+incdir+{}".format(local_paths.vcs_home + "etc/uvm"))
-        args.add(uvm_pkg)
+        args.add(paths.join(cd_path_fix, uvm_pkg.path))
         args.add_all(["-ntb_opts","uvm"])
         args.add("-sverilog")
-        args.add_all(vlog_files)
 
-        AN_DB_tar = ctx.actions.declare_file("AN.DB.tar")
-        print(AN_DB_tar.path)
+        files_args = ctx.actions.args()
+        files_args.add_all(vlog_files, format_each="{}/%s".format(cd_path_fix))
+
+        AN_DB_dir = ctx.actions.declare_directory("AN.DB")
+
         ctx.actions.run_shell(
             inputs = depset([uvm_pkg] + vlog_files, transitive=[ctx.attr._vlogan_runfiles.files, ctx.attr._vlogan.files]),
-            outputs = [AN_DB_tar],
-            command = "{vlogan} $@; tar -cvf {andb} AN.DB".format(
-                vlogan = vlogan.path,
-                andb = paths.join(ctx.bin_dir.path, ctx.label.package, "AN.DB.tar")
+            outputs = [AN_DB_dir],
+            command = "cd {out_dir}; {vlogan} $@".format(
+                vlogan = paths.join(cd_path_fix, vlogan.path),
+                out_dir = out_dir,
             ),
             arguments = [args],
             env = {
                 "VCS_HOME" : local_paths.vcs_home,
                 "HOME" : "/dev/null",
-		"UVM_HOME" : "/usr/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm"
+		        "UVM_HOME" : "/usr/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm"
             },
             mnemonic = "Vlogan",
             progress_message = "Analysing verilog files.",
@@ -279,17 +285,17 @@ def _test_impl(ctx):
     elab_args.add_all(["-o", simv])
 
     vcs = _get_file_obj(ctx.attr._vcs)
-    command = "tar -xf {andb}; {vcs} -full64 -timescale=1ns/1ns -CFLAGS -DVCS -debug_access+all /usr/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm/dpi/uvm_dpi.cc -j1 top_tb -o {simv}".format(
-        andb = AN_DB_tar.path,
-        vcs = vcs.path,
-	    simv = simv.path,
+    command = "cd {out_dir}; {vcs} -full64 -timescale=1ns/1ns -CFLAGS -DVCS -debug_access+all /usr/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm/dpi/uvm_dpi.cc -j1 top_tb -o {simv}".format(
+        vcs = paths.join(cd_path_fix, vcs.path),
+	    simv = paths.join(cd_path_fix, simv.path),
+        out_dir = out_dir,
     )
 
     daidir_path = ctx.actions.declare_directory("simv.daidir")
 
     ctx.actions.run_shell(
         outputs = [simv, daidir_path],
-        inputs = depset([AN_DB_tar], transitive=[ctx.attr._vcs.files]),
+        inputs = depset([AN_DB_dir], transitive=[ctx.attr._vcs.files]),
         command = command,
         arguments = [],
         env = {
