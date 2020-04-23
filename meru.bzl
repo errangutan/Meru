@@ -262,7 +262,7 @@ def _test_impl(ctx):
                 vlogan = paths.join(cd_path_fix, vlogan.path),
                 out_dir = out_dir,
             ),
-            arguments = [args],
+            arguments = [args, files_args],
             env = {
                 "VCS_HOME" : local_paths.vcs_home,
                 "HOME" : "/dev/null",
