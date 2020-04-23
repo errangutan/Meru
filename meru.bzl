@@ -2,6 +2,76 @@ load("@bazel_json//lib:json_parser.bzl", "json_parse")
 load("@vcs//:local_paths.bzl", "local_paths")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 
+DAIDIR_FILES = [
+    "simv.daidir/vcselab_misc_hsim_elab.db",
+    "simv.daidir/build_db",
+    "simv.daidir/elabmoddb.sdb",
+    "simv.daidir/vcselab_misc_vpdnodenums",
+    "simv.daidir/vcselab_master_hsim_virtintf_info.dat",
+    "simv.daidir/mxmap.db",
+    "simv.daidir/vcselab_misc_vcselabref.db",
+    "simv.daidir/binmap.sdb",
+    "simv.daidir/version.db",
+    "simv.daidir/vcselab_misc_hsim_uds.db",
+    "simv.daidir/vcselab_misc_mnmn.db",
+    "simv.daidir/DPIFuncTaskList",
+    "simv.daidir/nsparam.dat",
+    "simv.daidir/mxopt.db",
+    "simv.daidir/simv.kdb",
+    "simv.daidir/unielab.vltop",
+    "simv.daidir/vcselab_misc_partitionDbg.db",
+    "simv.daidir/vcselab_misc_hsdef.db",
+    "simv.daidir/pcc.sdb",
+    "simv.daidir/constraint.sdb",
+    "simv.daidir/vcselab_misc_midd.db",
+    "simv.daidir/vcselab_master_hsim_elabout.db",
+    "simv.daidir/external_functions",
+    "simv.daidir/covg_defs",
+    "simv.daidir/stitch_nsparam.dat",
+    "simv.daidir/vcselab_misc_hsim_fegate.db",
+    "simv.daidir/vloganopts.db",
+    "simv.daidir/eblklvl.db",
+    "simv.daidir/vcs_rebuild",
+    "simv.daidir/.normal_done",
+    "simv.daidir/vc_hdrs.o",
+    "simv.daidir/hslevel_level.sdb",
+    "simv.daidir/pcxpxmr.dat",
+    "simv.daidir/prof.sdb",
+    "simv.daidir/_748_archive_1.so",
+    "simv.daidir/constraint_string_index",
+    "simv.daidir/cc/cc_dummy_file",
+    "simv.daidir/cc/cc_bcode.db",
+    "simv.daidir/hslevel_rtime_level.sdb",
+    "simv.daidir/vcselab_misc_partition.db",
+    "simv.daidir/rmapats.so",
+    "simv.daidir/scsim.db.dir/scsim.db.file",
+    "simv.daidir/tt.sdb",
+    "simv.daidir/cgname.json",
+    "simv.daidir/hsscan_cfg.dat",
+    "simv.daidir/mxsetup.db",
+    "simv.daidir/hslevel_callgraph.sdb",
+    "simv.daidir/.daidir_complete",
+    "simv.daidir/saifNetInfo.db",
+    "simv.daidir/vcselab_misc_hsim_lvl.db",
+    "simv.daidir/debug_dump/topmodules",
+    "simv.daidir/debug_dump/src_files_verilog",
+    "simv.daidir/debug_dump/fsearch/idents_tapi.xml.gz",
+    "simv.daidir/debug_dump/fsearch/fsearch.stat",
+    "simv.daidir/debug_dump/fsearch/idents_rmKbIA.xml.gz",
+    "simv.daidir/debug_dump/fsearch/check_fsearch_db",
+    "simv.daidir/debug_dump/fsearch/.create_fsearch_db",
+    "simv.daidir/debug_dump/HsimSigOptDb.sdb",
+    "simv.daidir/debug_dump/.version",
+    "simv.daidir/debug_dump/dve_debug.db.gz",
+    "simv.daidir/debug_dump/AllModulesSkeletons.sdb",
+    "simv.daidir/debug_dump/dumpcheck.db",
+    "simv.daidir/debug_dump/vir.sdb",
+    "simv.daidir/vcselab_misc_hsim_name.db",
+    "simv.daidir/crc.db",
+    "simv.daidir/rmapats.dat",
+    "simv.daidir/vc_hdrs.c",
+]
+
 BlockInfo = provider(
     doc = "Provides sdc_files, and a libs dict. Each lib is a struct with a vlog_files depset and a vhdl_files depset.",
     fields = ["libs", "sdc_files"]
@@ -207,8 +277,6 @@ def _test_impl(ctx):
     elab_args.add("/usr/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm/dpi/uvm_dpi.cc")
     elab_args.add_all(["-j1", ctx.attr.top])
     elab_args.add_all(["-o", simv])
-  
-    daidir = ctx.actions.declare_directory("simv.daidir")
 
     vcs = _get_file_obj(ctx.attr._vcs)
     command = "tar -xf {andb}; {vcs} -full64 -timescale=1ns/1ns -CFLAGS -DVCS -debug_access+all /usr/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm/dpi/uvm_dpi.cc -j1 top_tb -o {simv}".format(
@@ -216,9 +284,11 @@ def _test_impl(ctx):
         vcs = vcs.path,
 	    simv = simv.path,
     )
-    print(command)
+
+    daidir_path = ctx.actions.declare_directory("simv.daidir")
+
     ctx.actions.run_shell(
-        outputs = [simv, daidir],
+        outputs = [simv, daidir_path],
         inputs = depset([AN_DB_tar], transitive=[ctx.attr._vcs.files]),
         command = command,
         arguments = [],
@@ -231,29 +301,17 @@ def _test_impl(ctx):
             "PATH" : "/usr/bin:/bin",
         },
     )
-    
-    daidir_tar = ctx.actions.declare_file("simv.daidir.tar")
-
-    ctx.actions.run(
-        inputs = [daidir],
-        outputs = [daidir_tar],
-        executable = "tar",
-        arguments = ["-cvhf", daidir_tar.path,"-C", paths.join(ctx.bin_dir.path, ctx.label.package), "simv.daidir"],
-        mnemonic = "TarDaidir",
-        progress_message = "taring: {} {}".format(daidir_tar.path, daidir.path)
-    )
 
     run_simv = ctx.actions.declare_file("run_simv")
     ctx.actions.write(run_simv, content="""
     #!/bin/bash
     cd {package}
-    tar -xf simv.daidir.tar
-    simv $@ || exit 1
+    simv $@
     """.format(package=ctx.label.package))
 
     return [DefaultInfo(
         executable=run_simv,
-        runfiles=ctx.runfiles(files = [simv, daidir_tar])
+        runfiles=ctx.runfiles(files = [simv, daidir_path])
     )]
     
 
