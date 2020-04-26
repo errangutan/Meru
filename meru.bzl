@@ -243,12 +243,14 @@ def _test_impl(ctx):
 
         args = ctx.actions.args()
         vlog_files = [item.to_list()[0] for item in libs[lib_key].vlog_files.to_list()]
-        args.add("-full64")
-        args.add_all(["-work","WORK"])
-        args.add("+incdir+{}".format(local_paths.vcs_home + "etc/uvm"))
-        args.add(paths.join(cd_path_fix, uvm_pkg.path))
-        args.add_all(["-ntb_opts","uvm"])
-        args.add("-sverilog")
+        args.add_all([
+            "-full64",
+            "-work","WORK",
+            "+incdir+{}".format(local_paths.vcs_home + "etc/uvm"),
+            paths.join(cd_path_fix, uvm_pkg.path),
+            "-ntb_opts","uvm",
+            "-sverilog",
+        ])
 
         files_args = ctx.actions.args()
         files_args.add_all(vlog_files, format_each="{}/%s".format(cd_path_fix))
