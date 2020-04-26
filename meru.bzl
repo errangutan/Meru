@@ -84,9 +84,6 @@ RegsInfo = provider(
 def _get_transitive_libs(vlog_files, vhdl_files, files_lib, blocks):
     lib_dict_list = [block[BlockInfo].libs for block in blocks]
 
-    vlog_files = [f.files for f in vlog_files]
-    vhdl_files = [f.files for f in vhdl_files]
-
     # Get all lib names in side lib dicts
     libs = [files_lib]
     for lib_dict in lib_dict_list:
@@ -110,8 +107,16 @@ def _get_transitive_libs(vlog_files, vhdl_files, files_lib, blocks):
     return output_libs_dict
 
 def _block_impl(ctx):
+    vlog_files = []
+    for file_list in [target.files.to_list() for target in ctx.attr.vlog_files]:
+        vlog_files += file_list 
+
+    vhdl_files = []
+    for file_list in [target.files.to_list() for target in ctx.attr.vhdl_files]:
+        vhdl_files += file_list
+
     return BlockInfo(
-        libs = _get_transitive_libs(ctx.attr.vlog_files, ctx.attr.vhdl_files, ctx.attr.lib, ctx.attr.blocks),
+        libs = _get_transitive_libs(vlog_files, vhdl_files, ctx.attr.lib, ctx.attr.blocks),
         sdc_files = depset(
             ctx.attr.sdc_files,
             transitive = [block[BlockInfo].sdc_files for block in ctx.attr.blocks],
@@ -224,17 +229,8 @@ def _link_outputs(ctx, outputs, command):
 
     return command
 
-def _get_file_obj(filegroup_target):
-    return filegroup_target.files.to_list()[0]
-
 # Note that you must use actions.args for the arguments of the compiler 
 def _test_impl(ctx): 
-    
-    # If VCS environment variables not set, fail.
-    # if local_paths.vcs_home == None:
-        # fail(msg = "VCS_HOME environment variable not set. Add \"bazel build --action_env VCS_HOME=<path> to /etc/bazel.bazelrc\"")
-    # if local_paths.vcs_license == None:
-        # fail(msg = "VCS_LICENSE environment variable not set. Add \"bazel build --action_env VCS_LICENSE=<path> to /etc/bazel.bazelrc\"")
 
     defines = json_parse(ctx.attr.defines)
     libs = _get_transitive_libs([], [], ctx.attr.lib, ctx.attr.blocks) # Merge libs of dependencies into single dict
@@ -246,7 +242,6 @@ def _test_impl(ctx):
     for lib_key in libs:
 
         args = ctx.actions.args()
-        vlog_files = [item.to_list()[0] for item in libs[lib_key].vlog_files.to_list()]
         args.add_all([
             "-full64",
             "-work","WORK",
@@ -257,14 +252,14 @@ def _test_impl(ctx):
         ])
 
         files_args = ctx.actions.args()
-        files_args.add_all(vlog_files, format_each="{}/%s".format(cd_path_fix))
+        files_args.add_all(libs[lib_key].vlog_files, format_each="{}/%s".format(cd_path_fix))
 
         AN_DB_dir = ctx.actions.declare_directory("AN.DB")
 
         ctx.actions.run_shell(
             inputs = depset(
-                [ctx.file._uvm_pkg, ctx.file._vlogan] + vlog_files,
-                transitive=[ctx.attr._vlogan_runfiles.files]),
+                [ctx.file._uvm_pkg, ctx.file._vlogan],
+                transitive=[libs[lib_key].vlog_files, ctx.attr._vlogan_runfiles.files]),
             outputs = [AN_DB_dir],
             command = "cd {out_dir};{vlogan} $@".format(
                 vlogan = paths.join(cd_path_fix, ctx.file._vlogan.path),
