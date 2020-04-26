@@ -184,16 +184,23 @@ test_attrs = {
             default = "1ns/1ns",
         ),
         "_vlogan" : attr.label(
-            default = "@vcs//:vlogan"
-        ),
-        "_vcs" : attr.label(
-            default = "@vcs//:vcs"
+            default = "@vcs//:vcs/bin/vlogan",
+            allow_single_file = True
         ),
         "_vlogan_runfiles" : attr.label(
-            default = "@vcs//:vlogan_runfiles"
+            default = "@vcs//:vlogan_runfiles",
+        ),
+        "_uvm" : attr.label(
+            default = "@vcs//:uvm",
+            allow_single_file = True
+        ),
+        "_vcs" : attr.label(
+            default = "@vcs//:vcs/bin/vcs",
+            allow_single_file = True
         ),
         "_uvm_pkg" : attr.label(
-            default = "@vcs//:uvm_pkg"
+            default = "@vcs//:uvm/uvm_pkg.sv",
+            allow_single_file = True
         )
     }
 
@@ -229,9 +236,6 @@ def _test_impl(ctx):
     # if local_paths.vcs_license == None:
         # fail(msg = "VCS_LICENSE environment variable not set. Add \"bazel build --action_env VCS_LICENSE=<path> to /etc/bazel.bazelrc\"")
 
-    vlogan = _get_file_obj(ctx.attr._vlogan)
-    uvm_pkg = _get_file_obj(ctx.attr._uvm_pkg)
-
     defines = json_parse(ctx.attr.defines)
     libs = _get_transitive_libs([], [], ctx.attr.lib, ctx.attr.blocks) # Merge libs of dependencies into single dict
 
@@ -246,8 +250,8 @@ def _test_impl(ctx):
         args.add_all([
             "-full64",
             "-work","WORK",
-            "+incdir+{}".format(local_paths.vcs_home + "etc/uvm"),
-            paths.join(cd_path_fix, uvm_pkg.path),
+            "+incdir+%s" % paths.join(cd_path_fix, ctx.file._uvm.path),
+            paths.join(cd_path_fix, ctx.file._uvm.path, "uvm_pkg.sv"),
             "-ntb_opts","uvm",
             "-sverilog",
         ])
@@ -258,10 +262,12 @@ def _test_impl(ctx):
         AN_DB_dir = ctx.actions.declare_directory("AN.DB")
 
         ctx.actions.run_shell(
-            inputs = depset([uvm_pkg] + vlog_files, transitive=[ctx.attr._vlogan_runfiles.files, ctx.attr._vlogan.files]),
+            inputs = depset(
+                [ctx.file._uvm_pkg, ctx.file._vlogan] + vlog_files,
+                transitive=[ctx.attr._vlogan_runfiles.files]),
             outputs = [AN_DB_dir],
-            command = "cd {out_dir}; {vlogan} $@".format(
-                vlogan = paths.join(cd_path_fix, vlogan.path),
+            command = "cd {out_dir};{vlogan} $@".format(
+                vlogan = paths.join(cd_path_fix, ctx.file._vlogan.path),
                 out_dir = out_dir,
             ),
             arguments = [args, files_args],
@@ -286,9 +292,8 @@ def _test_impl(ctx):
     elab_args.add_all(["-j1", ctx.attr.top])
     elab_args.add_all(["-o", simv])
 
-    vcs = _get_file_obj(ctx.attr._vcs)
     command = "cd {out_dir}; {vcs} -full64 -timescale=1ns/1ns -CFLAGS -DVCS -debug_access+all /usr/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm/dpi/uvm_dpi.cc -j1 top_tb -o {simv}".format(
-        vcs = paths.join(cd_path_fix, vcs.path),
+        vcs = paths.join(cd_path_fix, ctx.file._vcs.path),
 	    simv = paths.join(cd_path_fix, simv.path),
         out_dir = out_dir,
     )
@@ -297,7 +302,7 @@ def _test_impl(ctx):
 
     ctx.actions.run_shell(
         outputs = [simv, daidir_path],
-        inputs = depset([AN_DB_dir], transitive=[ctx.attr._vcs.files]),
+        inputs = [AN_DB_dir, ctx.file._vcs],
         command = command,
         arguments = [],
         env = {
