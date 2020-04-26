@@ -239,7 +239,7 @@ def _test_impl(ctx):
     cd_path_fix = "/".join(len(out_dir.split("/"))*[".."])
     print (cd_path_fix)
 
-    for lib_key in libs:
+    for lib_key, lib in libs.items():
 
         args = ctx.actions.args()
         args.add_all([
@@ -252,14 +252,14 @@ def _test_impl(ctx):
         ])
 
         files_args = ctx.actions.args()
-        files_args.add_all(libs[lib_key].vlog_files, format_each="{}/%s".format(cd_path_fix))
+        files_args.add_all(lib.vlog_files, format_each="{}/%s".format(cd_path_fix))
 
         AN_DB_dir = ctx.actions.declare_directory("AN.DB")
 
         ctx.actions.run_shell(
             inputs = depset(
                 [ctx.file._uvm_pkg, ctx.file._vlogan],
-                transitive=[libs[lib_key].vlog_files, ctx.attr._vlogan_runfiles.files]),
+                transitive=[lib.vlog_files, ctx.attr._vlogan_runfiles.files]),
             outputs = [AN_DB_dir],
             command = "cd {out_dir};{vlogan} $@".format(
                 vlogan = paths.join(cd_path_fix, ctx.file._vlogan.path),
