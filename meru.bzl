@@ -156,14 +156,24 @@ def _test_impl(ctx):
         [ctx.file.vlog_top] if has_vlog_top else [],
         [ctx.file.vhdl_top] if has_vhdl_top else [],
         ctx.attr.lib,
-        ctx.attr.blocks) 
+        ctx.attr.blocks)
+
+
+    # Create define arguments. Each arg is formatted as +define+NAME=VALUE
+    # if value is "", the arg format is +define+NAME
+    vlog_defines_args = ctx.actions.args()
+    for define_name, value in ctx.attr.defines.items():
+        vlog_defines_args.add("+define+{define_name}{value}".format(
+            define_name = define_name,
+            value = "=%s" % value if value != "" else ""
+        ))
 
     out_dir = paths.join(ctx.bin_dir.path, ctx.label.package)
     cd_path_fix = "/".join(len(out_dir.split("/"))*[".."])
     for lib_key, lib in libs.items():
 
-        args = ctx.actions.args()
-        args.add_all([
+        vlog_args = ctx.actions.args()
+        vlog_args.add_all([
             "-full64",
             "-work","WORK",
             "+incdir+%s" % paths.join(cd_path_fix, ctx.file._uvm.path),
@@ -186,7 +196,7 @@ def _test_impl(ctx):
                 vlogan = paths.join(cd_path_fix, ctx.file._vlogan.path),
                 out_dir = out_dir,
             ),
-            arguments = [args, files_args],
+            arguments = [vlog_args, vlog_defines_args, files_args],
             env = {
                 "VCS_HOME" : local_paths.vcs_home,
                 "HOME" : "/dev/null",
