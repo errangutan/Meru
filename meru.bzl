@@ -171,7 +171,7 @@ def _test_impl(ctx):
         ctx.actions.run_shell(
             inputs = depset(
                 [ctx.file._uvm_pkg, ctx.file._vlogan],
-                transitive=[lib.vlog_files, ctx.attr._vlogan_runfiles.files]),
+                transitive=[lib.vlog_files]),
             outputs = [AN_DB_dir],
             command = "cd {out_dir};{vlogan} $@".format(
                 vlogan = paths.join(cd_path_fix, ctx.file._vlogan.path),
