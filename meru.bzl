@@ -278,14 +278,16 @@ def _test_impl(ctx):
     
     simv = ctx.actions.declare_file("simv")
     elab_args = ctx.actions.args()
-    elab_args.add("-full64")
-    elab_args.add("-timescale=1ns/1ns")
-    elab_args.add("-CFLAGS")
-    elab_args.add("-DVCS")
-    elab_args.add("-debug_access+all")
-    elab_args.add("/usr/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm/dpi/uvm_dpi.cc")
-    elab_args.add_all(["-j1", ctx.attr.top])
-    elab_args.add_all(["-o", simv])
+    elab_args.add_all([
+        "-full64",
+        "-timescale=1ns/1ns",
+        "-CFLAGS",
+        "-DVCS",
+        "-debug_access+all",
+        "/usr/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm/dpi/uvm_dpi.cc",
+        "-j1", ctx.attr.top,
+        "-o", simv,
+    ])
 
     command = "cd {out_dir}; {vcs} -full64 -timescale=1ns/1ns -CFLAGS -DVCS -debug_access+all /usr/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm/dpi/uvm_dpi.cc -j1 top_tb -o {simv}".format(
         vcs = paths.join(cd_path_fix, ctx.file._vcs.path),
