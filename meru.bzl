@@ -122,9 +122,6 @@ test_attrs = {
             default = "@vcs//:vcs/bin/vlogan",
             allow_single_file = True
         ),
-        "_vlogan_runfiles" : attr.label(
-            default = "@vcs//:vlogan_runfiles",
-        ),
         "_uvm" : attr.label(
             default = "@vcs//:uvm",
             allow_single_file = True
@@ -135,10 +132,6 @@ test_attrs = {
         ),
         "_uvm_pkg" : attr.label(
             default = "@vcs//:uvm/uvm_pkg.sv",
-            allow_single_file = True
-        ),
-        "_uvm_dpi" : attr.label(
-            default = "@vcs//:uvm/dpi/uvm_dpi.cc",
             allow_single_file = True
         ),
     }
@@ -158,7 +151,7 @@ def _test_impl(ctx):
             "-full64",
             "-work","WORK",
             "+incdir+%s" % paths.join(cd_path_fix, ctx.file._uvm.path),
-            paths.join(cd_path_fix, ctx.file._uvm.path, "uvm_pkg.sv"),
+            paths.join(cd_path_fix, ctx.file._uvm_pkg.path),
             "-ntb_opts","uvm",
             "-sverilog",
         ])
@@ -209,7 +202,7 @@ def _test_impl(ctx):
 
     ctx.actions.run_shell(
         outputs = [simv, daidir_path],
-        inputs = [AN_DB_dir, ctx.file._vcs, ctx.file._uvm_dpi],
+        inputs = [AN_DB_dir, ctx.file._vcs, ctx.file._uvm],
         command = command,
         arguments = [elab_args],
         env = {
