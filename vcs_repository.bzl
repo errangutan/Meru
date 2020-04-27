@@ -28,15 +28,13 @@ def _vcs_repository_impl(ctx):
     environ = ctx.os.environ
 
     ctx.symlink(environ["VCS_HOME"], "vcs")
+    ctx.symlink(environ["UVM_HOME"], "uvm")
 
     _local_paths(ctx)
 
     ctx.file("WORKSPACE", "")
     BUILD_components = [
-        _file_group("vlogan", ["vcs/bin/vlogan"]),
-        _file_group("vcs", ["vcs/bin/vcs"]),
-        _file_group("vlogan_runfiles", ["vcs/etc/uvm/uvm_macros.svh"]),
-        _file_group("uvm_pkg", ["vcs/etc/uvm/uvm_pkg.sv"])
+        """exports_files(["vcs", "uvm", "uvm/uvm_pkg.sv", "vcs/bin/vlogan", "vcs/bin/vcs"])"""
     ]
 
     # Write BUILD file, so repo will be accessabe as package
@@ -45,6 +43,7 @@ def _vcs_repository_impl(ctx):
 vcs_repository = repository_rule(
     implementation = _vcs_repository_impl,
     environ = [
+        "UVM_HOME",
         "VCS_HOME",
         "LM_LICENSE_FILE",
     ],

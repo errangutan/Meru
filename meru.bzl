@@ -2,116 +2,54 @@ load("@bazel_json//lib:json_parser.bzl", "json_parse")
 load("@vcs//:local_paths.bzl", "local_paths")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 
-DAIDIR_FILES = [
-    "simv.daidir/vcselab_misc_hsim_elab.db",
-    "simv.daidir/build_db",
-    "simv.daidir/elabmoddb.sdb",
-    "simv.daidir/vcselab_misc_vpdnodenums",
-    "simv.daidir/vcselab_master_hsim_virtintf_info.dat",
-    "simv.daidir/mxmap.db",
-    "simv.daidir/vcselab_misc_vcselabref.db",
-    "simv.daidir/binmap.sdb",
-    "simv.daidir/version.db",
-    "simv.daidir/vcselab_misc_hsim_uds.db",
-    "simv.daidir/vcselab_misc_mnmn.db",
-    "simv.daidir/DPIFuncTaskList",
-    "simv.daidir/nsparam.dat",
-    "simv.daidir/mxopt.db",
-    "simv.daidir/simv.kdb",
-    "simv.daidir/unielab.vltop",
-    "simv.daidir/vcselab_misc_partitionDbg.db",
-    "simv.daidir/vcselab_misc_hsdef.db",
-    "simv.daidir/pcc.sdb",
-    "simv.daidir/constraint.sdb",
-    "simv.daidir/vcselab_misc_midd.db",
-    "simv.daidir/vcselab_master_hsim_elabout.db",
-    "simv.daidir/external_functions",
-    "simv.daidir/covg_defs",
-    "simv.daidir/stitch_nsparam.dat",
-    "simv.daidir/vcselab_misc_hsim_fegate.db",
-    "simv.daidir/vloganopts.db",
-    "simv.daidir/eblklvl.db",
-    "simv.daidir/vcs_rebuild",
-    "simv.daidir/.normal_done",
-    "simv.daidir/vc_hdrs.o",
-    "simv.daidir/hslevel_level.sdb",
-    "simv.daidir/pcxpxmr.dat",
-    "simv.daidir/prof.sdb",
-    "simv.daidir/_748_archive_1.so",
-    "simv.daidir/constraint_string_index",
-    "simv.daidir/cc/cc_dummy_file",
-    "simv.daidir/cc/cc_bcode.db",
-    "simv.daidir/hslevel_rtime_level.sdb",
-    "simv.daidir/vcselab_misc_partition.db",
-    "simv.daidir/rmapats.so",
-    "simv.daidir/scsim.db.dir/scsim.db.file",
-    "simv.daidir/tt.sdb",
-    "simv.daidir/cgname.json",
-    "simv.daidir/hsscan_cfg.dat",
-    "simv.daidir/mxsetup.db",
-    "simv.daidir/hslevel_callgraph.sdb",
-    "simv.daidir/.daidir_complete",
-    "simv.daidir/saifNetInfo.db",
-    "simv.daidir/vcselab_misc_hsim_lvl.db",
-    "simv.daidir/debug_dump/topmodules",
-    "simv.daidir/debug_dump/src_files_verilog",
-    "simv.daidir/debug_dump/fsearch/idents_tapi.xml.gz",
-    "simv.daidir/debug_dump/fsearch/fsearch.stat",
-    "simv.daidir/debug_dump/fsearch/idents_rmKbIA.xml.gz",
-    "simv.daidir/debug_dump/fsearch/check_fsearch_db",
-    "simv.daidir/debug_dump/fsearch/.create_fsearch_db",
-    "simv.daidir/debug_dump/HsimSigOptDb.sdb",
-    "simv.daidir/debug_dump/.version",
-    "simv.daidir/debug_dump/dve_debug.db.gz",
-    "simv.daidir/debug_dump/AllModulesSkeletons.sdb",
-    "simv.daidir/debug_dump/dumpcheck.db",
-    "simv.daidir/debug_dump/vir.sdb",
-    "simv.daidir/vcselab_misc_hsim_name.db",
-    "simv.daidir/crc.db",
-    "simv.daidir/rmapats.dat",
-    "simv.daidir/vc_hdrs.c",
-]
-
 BlockInfo = provider(
     doc = "Provides sdc_files, and a libs dict. Each lib is a struct with a vlog_files depset and a vhdl_files depset.",
-    fields = ["libs", "sdc_files"]
+    fields = ["vlog_libs", "vhdl_libs", "sdc_files"]
 )
 
 RegsInfo = provider(
     doc = "Provides info about the findl"
 )
 
-def _get_transitive_libs(vlog_files, vhdl_files, files_lib, blocks):
-    lib_dict_list = [block[BlockInfo].libs for block in blocks]
+def _get_transitive_libs(files, files_lib, dependecy_libs):
+    """Merges between depsets of same library in different
+    dependencies, adds ```files``` to the lib ```files_lib```
+    and returns the merged lib construct.
 
-    vlog_files = [f.files for f in vlog_files]
-    vhdl_files = [f.files for f in vhdl_files]
+    Args:
+        ```files```: List of ```File``` objects
+        ```files_lib```: Name of library ```files``` belong to
+        ```dependency_libs```: List of library constructs which are to be merged to single library. 
+    """
 
     # Get all lib names in side lib dicts
     libs = [files_lib]
-    for lib_dict in lib_dict_list:
+    for lib_dict in dependecy_libs:
         libs.extend(lib_dict.keys())
     libs = [x for i,x in enumerate(libs) if x not in libs[:i]] # Remove doubles
 
     # For every library we found in the libs dicts, get all depsets of that library
     output_libs_dict = {}
     for lib in libs:
-        output_libs_dict[lib] = struct(
-            vlog_files = depset(
-                vlog_files if lib == files_lib else [],
-                transitive=[lib_dict[lib].vlog_files for lib_dict in lib_dict_list if lib in lib_dict]
-            ),
-            vhdl_files = depset(
-                vhdl_files if lib == files_lib else [],
-                transitive=[lib_dict[lib].vhdl_files for lib_dict in lib_dict_list if lib in lib_dict]
-            ),
-        )
-    
+        output_libs_dict[lib] = depset(
+            files if lib == files_lib else [],
+            transitive=[lib_dict[lib] for lib_dict in dependecy_libs if lib in lib_dict]
+            )
+
     return output_libs_dict
 
 def _block_impl(ctx):
+    vlog_files = []
+    for file_list in [target.files.to_list() for target in ctx.attr.vlog_files]:
+        vlog_files += file_list 
+
+    vhdl_files = []
+    for file_list in [target.files.to_list() for target in ctx.attr.vhdl_files]:
+        vhdl_files += file_list
+
     return BlockInfo(
-        libs = _get_transitive_libs(ctx.attr.vlog_files, ctx.attr.vhdl_files, ctx.attr.lib, ctx.attr.blocks),
+        vlog_libs = _get_transitive_libs(vlog_files, ctx.attr.lib, [block[BlockInfo].vlog_libs for block in ctx.attr.blocks]),
+        vhdl_libs = _get_transitive_libs(vhdl_files, ctx.attr.lib, [block[BlockInfo].vhdl_libs for block in ctx.attr.blocks]),
         sdc_files = depset(
             ctx.attr.sdc_files,
             transitive = [block[BlockInfo].sdc_files for block in ctx.attr.blocks],
@@ -156,10 +94,13 @@ test_attrs = {
             doc = "Name of top level module.",
             mandatory = True,
         ),
-        "top_file" : attr.label(
-            doc = "HDL File which contains the top level module.",
-            allow_files = [".vhdl", ".sv", ".v"],
-            mandatory = True,
+        "vlog_top" : attr.label(
+            doc = "```.v``` / ```.sv``` file which contains the top level module declared in ```top```. ```vlog_top``` and ```vhdl_top``` are mutually exclusive.",
+            allow_single_file = [".sv", ".v"],
+        ),
+        "vhdl_top" : attr.label(
+            doc = "```.vhd``` file which contains the top level module declared in ```top```. ```vlog_top``` and ```vhdl_top``` are mutually exclusive.",
+            allow_single_file = [".hdl"],
         ),
         "lib" : attr.string(
             doc = "Name of library of the top_file.",
@@ -175,80 +116,79 @@ test_attrs = {
             doc = "Runtime dependencies of this test.",
             default = [],
         ),
-        "defines" : attr.string(
+        "defines" : attr.string_dict(
             doc = "Compiler defines. Formatted as string keyed dict of strings.",
-            default = "{}",
+            default = {},
         ),
         "timescale" : attr.string(
             doc = "Elaboration timescale flag",
             default = "1ns/1ns",
         ),
         "_vlogan" : attr.label(
-            default = "@vcs//:vlogan"
+            default = "@vcs//:vcs/bin/vlogan",
+            allow_single_file = True
+        ),
+        "_uvm" : attr.label(
+            default = "@vcs//:uvm",
+            allow_single_file = True
         ),
         "_vcs" : attr.label(
-            default = "@vcs//:vcs"
-        ),
-        "_vlogan_runfiles" : attr.label(
-            default = "@vcs//:vlogan_runfiles"
+            default = "@vcs//:vcs/bin/vcs",
+            allow_single_file = True
         ),
         "_uvm_pkg" : attr.label(
-            default = "@vcs//:uvm_pkg"
-        )
+            default = "@vcs//:uvm/uvm_pkg.sv",
+            allow_single_file = True
+        ),
     }
-
-def _link_outputs(ctx, outputs, command):
-    link_dict = {output:"{}/{}/{}".format(ctx.bin_dir.path,ctx.label.package,output) for output in outputs}
-    bash_links = ' '.join(["[{}]={}".format(k,v) for k,v in link_dict.items()])
-    command = """
-    {command} && {{
-        declare -A LINKS=({bash_links})
-        for l in "${{!LINKS[@]}}"
-        do
-            rm -r ${{LINKS[$l]}}
-            echo $(realpath $l) ${{LINKS[$l]}}
-            ln -snf $(realpath $l) ${{LINKS[$l]}} 
-        done\n
-    }}
-    """.format(
-        command=command,
-        bash_links=bash_links
-    )
-
-    return command
-
-def _get_file_obj(filegroup_target):
-    return filegroup_target.files.to_list()[0]
 
 # Note that you must use actions.args for the arguments of the compiler 
 def _test_impl(ctx): 
-    
-    # If VCS environment variables not set, fail.
-    # if local_paths.vcs_home == None:
-        # fail(msg = "VCS_HOME environment variable not set. Add \"bazel build --action_env VCS_HOME=<path> to /etc/bazel.bazelrc\"")
-    # if local_paths.vcs_license == None:
-        # fail(msg = "VCS_LICENSE environment variable not set. Add \"bazel build --action_env VCS_LICENSE=<path> to /etc/bazel.bazelrc\"")
 
-    vlogan = _get_file_obj(ctx.attr._vlogan)
-    uvm_pkg = _get_file_obj(ctx.attr._uvm_pkg)
+    has_vlog_top = ctx.file.vlog_top != None
+    has_vhdl_top = ctx.file.vhdl_top != None
 
-    defines = json_parse(ctx.attr.defines)
-    libs = _get_transitive_libs([], [], ctx.attr.lib, ctx.attr.blocks) # Merge libs of dependencies into single dict
+    if has_vlog_top and has_vhdl_top:
+        fail("vlog_top and vhdl_top are mutually exclusive, pick one.")
+
+    if not (has_vhdl_top or has_vlog_top):
+        fail("No top file assigned. Assign vlog_top or vhdl_top.")
+
+    # Merge libs of dependencies into single dict, and add top file
+    vlog_libs = _get_transitive_libs(
+        [ctx.file.vlog_top] if has_vlog_top else [],
+        ctx.attr.lib,
+        [block[BlockInfo].vlog_libs for block in ctx.attr.blocks])
+
+    vhdl_libs = _get_transitive_libs(
+        [ctx.file.vhdl_top] if has_vhdl_top else [],
+        ctx.attr.lib,
+        [block[BlockInfo].vhdl_libs for block in ctx.attr.blocks])
+
+    # Create define arguments. Each arg is formatted as +define+NAME=VALUE
+    # if value is "", the arg format is +define+NAME
+    vlog_defines_args = ctx.actions.args()
+    for define_name, value in ctx.attr.defines.items():
+        vlog_defines_args.add("+define+{define_name}{value}".format(
+            define_name = define_name,
+            value = "=%s" % value if value != "" else ""
+        ))
 
     out_dir = paths.join(ctx.bin_dir.path, ctx.label.package)
     cd_path_fix = "/".join(len(out_dir.split("/"))*[".."])
-    print (cd_path_fix)
+    
 
-    for lib_key in libs:
+    for lib_key, vlog_files in vlog_libs.items():
 
-        args = ctx.actions.args()
-        vlog_files = [item.to_list()[0] for item in libs[lib_key].vlog_files.to_list()]
-        args.add("-full64")
-        args.add_all(["-work","WORK"])
-        args.add("+incdir+{}".format(local_paths.vcs_home + "etc/uvm"))
-        args.add(paths.join(cd_path_fix, uvm_pkg.path))
-        args.add_all(["-ntb_opts","uvm"])
-        args.add("-sverilog")
+        vlog_args = ctx.actions.args()
+        vlog_args.add_all([
+            "-full64",
+            "-work","WORK",
+            "+incdir+%s" % paths.join(cd_path_fix, ctx.file._uvm.path),
+            paths.join(cd_path_fix, ctx.file._uvm_pkg.path),
+            "-ntb_opts","uvm",
+            "-sverilog",
+        ])
 
         files_args = ctx.actions.args()
         files_args.add_all(vlog_files, format_each="{}/%s".format(cd_path_fix))
@@ -256,38 +196,39 @@ def _test_impl(ctx):
         AN_DB_dir = ctx.actions.declare_directory("AN.DB")
 
         ctx.actions.run_shell(
-            inputs = depset([uvm_pkg] + vlog_files, transitive=[ctx.attr._vlogan_runfiles.files, ctx.attr._vlogan.files]),
+            inputs = depset(
+                [ctx.file._uvm_pkg, ctx.file._vlogan],
+                transitive=[vlog_files]),
             outputs = [AN_DB_dir],
-            command = "cd {out_dir}; {vlogan} $@".format(
-                vlogan = paths.join(cd_path_fix, vlogan.path),
+            command = "cd {out_dir};{vlogan} $@".format(
+                vlogan = paths.join(cd_path_fix, ctx.file._vlogan.path),
                 out_dir = out_dir,
             ),
-            arguments = [args, files_args],
+            arguments = [vlog_args, vlog_defines_args, files_args],
             env = {
                 "VCS_HOME" : local_paths.vcs_home,
                 "HOME" : "/dev/null",
-		        "UVM_HOME" : "/usr/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm"
+		        "UVM_HOME" : local_paths.uvm_home
             },
             mnemonic = "Vlogan",
             progress_message = "Analysing verilog files.",
         )
-        
-    
+
     simv = ctx.actions.declare_file("simv")
     elab_args = ctx.actions.args()
-    elab_args.add("-full64")
-    elab_args.add("-timescale=1ns/1ns")
-    elab_args.add("-CFLAGS")
-    elab_args.add("-DVCS")
-    elab_args.add("-debug_access+all")
-    elab_args.add("/usr/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm/dpi/uvm_dpi.cc")
-    elab_args.add_all(["-j1", ctx.attr.top])
-    elab_args.add_all(["-o", simv])
+    elab_args.add_all([
+        "-full64",
+        "-timescale=%s" % ctx.attr.timescale,
+        "-CFLAGS",
+        "-DVCS",
+        "-debug_access+all",
+        paths.join(local_paths.uvm_home, "dpi/uvm_dpi.cc"),
+        "-j1", ctx.attr.top,
+        "-o", paths.join(cd_path_fix, simv.path),
+    ])
 
-    vcs = _get_file_obj(ctx.attr._vcs)
-    command = "cd {out_dir}; {vcs} -full64 -timescale=1ns/1ns -CFLAGS -DVCS -debug_access+all /usr/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm/dpi/uvm_dpi.cc -j1 top_tb -o {simv}".format(
-        vcs = paths.join(cd_path_fix, vcs.path),
-	    simv = paths.join(cd_path_fix, simv.path),
+    command = "tree ;cd {out_dir}; {vcs} $@".format(
+        vcs = paths.join(cd_path_fix, ctx.file._vcs.path),
         out_dir = out_dir,
     )
 
@@ -295,14 +236,12 @@ def _test_impl(ctx):
 
     ctx.actions.run_shell(
         outputs = [simv, daidir_path],
-        inputs = depset([AN_DB_dir], transitive=[ctx.attr._vcs.files]),
+        inputs = [AN_DB_dir, ctx.file._vcs, ctx.file._uvm],
         command = command,
-        arguments = [],
+        arguments = [elab_args],
         env = {
             "VCS_HOME" : local_paths.vcs_home,
             "LM_LICENSE_FILE" : local_paths.lm_license_file,
-	        "UVM_HOME" : "/usr/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm",
-            "SNPSLMD_LICENSE_FILE" : "27020@10.0.1.4",
             "HOME" : "/dev/null",
             "PATH" : "/usr/bin:/bin",
         },
