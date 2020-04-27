@@ -4,36 +4,38 @@ load("@bazel_skylib//lib:paths.bzl", "paths")
 
 BlockInfo = provider(
     doc = "Provides sdc_files, and a libs dict. Each lib is a struct with a vlog_files depset and a vhdl_files depset.",
-    fields = ["libs", "sdc_files"]
+    fields = ["vlog_libs", "vhdl_libs", "sdc_files"]
 )
 
 RegsInfo = provider(
     doc = "Provides info about the findl"
 )
 
-def _get_transitive_libs(vlog_files, vhdl_files, files_lib, blocks):
-    lib_dict_list = [block[BlockInfo].libs for block in blocks]
+def _get_transitive_libs(files, files_lib, dependecy_libs):
+    """Merges between depsets of same library in different
+    dependencies, adds ```files``` to the lib ```files_lib```
+    and returns the merged lib construct.
+
+    Args:
+        ```files```: List of ```File``` objects
+        ```files_lib```: Name of library ```files``` belong to
+        ```dependency_libs```: List of library constructs which are to be merged to single library. 
+    """
 
     # Get all lib names in side lib dicts
     libs = [files_lib]
-    for lib_dict in lib_dict_list:
+    for lib_dict in dependecy_libs:
         libs.extend(lib_dict.keys())
     libs = [x for i,x in enumerate(libs) if x not in libs[:i]] # Remove doubles
 
     # For every library we found in the libs dicts, get all depsets of that library
     output_libs_dict = {}
     for lib in libs:
-        output_libs_dict[lib] = struct(
-            vlog_files = depset(
-                vlog_files if lib == files_lib else [],
-                transitive=[lib_dict[lib].vlog_files for lib_dict in lib_dict_list if lib in lib_dict]
-            ),
-            vhdl_files = depset(
-                vhdl_files if lib == files_lib else [],
-                transitive=[lib_dict[lib].vhdl_files for lib_dict in lib_dict_list if lib in lib_dict]
-            ),
-        )
-    
+        output_libs_dict[lib] = depset(
+            files if lib == files_lib else [],
+            transitive=[lib_dict[lib] for lib_dict in dependecy_libs if lib in lib_dict]
+            )
+
     return output_libs_dict
 
 def _block_impl(ctx):
@@ -46,7 +48,8 @@ def _block_impl(ctx):
         vhdl_files += file_list
 
     return BlockInfo(
-        libs = _get_transitive_libs(vlog_files, vhdl_files, ctx.attr.lib, ctx.attr.blocks),
+        vlog_libs = _get_transitive_libs(vlog_files, ctx.attr.lib, [block[BlockInfo].vlog_libs for block in ctx.attr.blocks]),
+        vhdl_libs = _get_transitive_libs(vhdl_files, ctx.attr.lib, [block[BlockInfo].vhdl_libs for block in ctx.attr.blocks]),
         sdc_files = depset(
             ctx.attr.sdc_files,
             transitive = [block[BlockInfo].sdc_files for block in ctx.attr.blocks],
@@ -152,12 +155,15 @@ def _test_impl(ctx):
         fail("No top file assigned. Assign vlog_top or vhdl_top.")
 
     # Merge libs of dependencies into single dict, and add top file
-    libs = _get_transitive_libs(
+    vlog_libs = _get_transitive_libs(
         [ctx.file.vlog_top] if has_vlog_top else [],
+        ctx.attr.lib,
+        [block[BlockInfo].vlog_libs for block in ctx.attr.blocks])
+
+    vhdl_libs = _get_transitive_libs(
         [ctx.file.vhdl_top] if has_vhdl_top else [],
         ctx.attr.lib,
-        ctx.attr.blocks)
-
+        [block[BlockInfo].vhdl_libs for block in ctx.attr.blocks])
 
     # Create define arguments. Each arg is formatted as +define+NAME=VALUE
     # if value is "", the arg format is +define+NAME
@@ -170,7 +176,9 @@ def _test_impl(ctx):
 
     out_dir = paths.join(ctx.bin_dir.path, ctx.label.package)
     cd_path_fix = "/".join(len(out_dir.split("/"))*[".."])
-    for lib_key, lib in libs.items():
+    
+
+    for lib_key, vlog_files in vlog_libs.items():
 
         vlog_args = ctx.actions.args()
         vlog_args.add_all([
@@ -183,14 +191,14 @@ def _test_impl(ctx):
         ])
 
         files_args = ctx.actions.args()
-        files_args.add_all(lib.vlog_files, format_each="{}/%s".format(cd_path_fix))
+        files_args.add_all(vlog_files, format_each="{}/%s".format(cd_path_fix))
 
         AN_DB_dir = ctx.actions.declare_directory("AN.DB")
 
         ctx.actions.run_shell(
             inputs = depset(
                 [ctx.file._uvm_pkg, ctx.file._vlogan],
-                transitive=[lib.vlog_files]),
+                transitive=[vlog_files]),
             outputs = [AN_DB_dir],
             command = "cd {out_dir};{vlogan} $@".format(
                 vlogan = paths.join(cd_path_fix, ctx.file._vlogan.path),
