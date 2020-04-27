@@ -13,13 +13,13 @@ RegsInfo = provider(
 
 def _get_transitive_libs(files, files_lib, dependecy_libs):
     """Merges between depsets of same library in different
-    dependencies, adds ```files``` to the lib ```files_lib```
+    dependencies, adds `files` to the lib `files_lib`
     and returns the merged lib construct.
 
     Args:
-        ```files```: List of ```File``` objects
-        ```files_lib```: Name of library ```files``` belong to
-        ```dependency_libs```: List of library constructs which are to be merged to single library. 
+        `files`: List of `File` objects
+        `files_lib`: Name of library `files` belong to
+        `dependency_libs`: List of library constructs which are to be merged to single library. 
     """
 
     # Get all lib names in side lib dicts
