@@ -139,26 +139,6 @@ test_attrs = {
         )
     }
 
-def _link_outputs(ctx, outputs, command):
-    link_dict = {output:"{}/{}/{}".format(ctx.bin_dir.path,ctx.label.package,output) for output in outputs}
-    bash_links = ' '.join(["[{}]={}".format(k,v) for k,v in link_dict.items()])
-    command = """
-    {command} && {{
-        declare -A LINKS=({bash_links})
-        for l in "${{!LINKS[@]}}"
-        do
-            rm -r ${{LINKS[$l]}}
-            echo $(realpath $l) ${{LINKS[$l]}}
-            ln -snf $(realpath $l) ${{LINKS[$l]}} 
-        done\n
-    }}
-    """.format(
-        command=command,
-        bash_links=bash_links
-    )
-
-    return command
-
 # Note that you must use actions.args for the arguments of the compiler 
 def _test_impl(ctx): 
 
