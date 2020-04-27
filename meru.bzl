@@ -113,9 +113,9 @@ test_attrs = {
             doc = "Runtime dependencies of this test.",
             default = [],
         ),
-        "defines" : attr.string(
+        "defines" : attr.string_dict(
             doc = "Compiler defines. Formatted as string keyed dict of strings.",
-            default = "{}",
+            default = {},
         ),
         "timescale" : attr.string(
             doc = "Elaboration timescale flag",
@@ -141,8 +141,6 @@ test_attrs = {
 
 # Note that you must use actions.args for the arguments of the compiler 
 def _test_impl(ctx): 
-
-    defines = json_parse(ctx.attr.defines)
 
     has_vlog_top = ctx.file.vlog_top != None
     has_vhdl_top = ctx.file.vhdl_top != None
