@@ -91,10 +91,13 @@ test_attrs = {
             doc = "Name of top level module.",
             mandatory = True,
         ),
-        "top_file" : attr.label(
-            doc = "HDL File which contains the top level module.",
-            allow_files = [".vhdl", ".sv", ".v"],
-            mandatory = True,
+        "vlog_top" : attr.label(
+            doc = "```.v``` / ```.sv``` file which contains the top level module declared in ```top```. ```vlog_top``` and ```vhdl_top``` are mutually exclusive.",
+            allow_single_file = [".sv", ".v"],
+        ),
+        "vhdl_top" : attr.label(
+            doc = "```.vhd``` file which contains the top level module declared in ```top```. ```vlog_top``` and ```vhdl_top``` are mutually exclusive.",
+            allow_single_file = [".hdl"],
         ),
         "lib" : attr.string(
             doc = "Name of library of the top_file.",
@@ -140,7 +143,22 @@ test_attrs = {
 def _test_impl(ctx): 
 
     defines = json_parse(ctx.attr.defines)
-    libs = _get_transitive_libs([], [], ctx.attr.lib, ctx.attr.blocks) # Merge libs of dependencies into single dict
+
+    has_vlog_top = ctx.file.vlog_top != None
+    has_vhdl_top = ctx.file.vhdl_top != None
+
+    if has_vlog_top and has_vhdl_top:
+        fail("vlog_top and vhdl_top are mutually exclusive, pick one.")
+
+    if not (has_vhdl_top or has_vlog_top):
+        fail("No top file assigned. Assign vlog_top or vhdl_top.")
+
+    # Merge libs of dependencies into single dict, and add top file
+    libs = _get_transitive_libs(
+        [ctx.file.vlog_top] if has_vlog_top else [],
+        [ctx.file.vhdl_top] if has_vhdl_top else [],
+        ctx.attr.lib,
+        ctx.attr.blocks) 
 
     out_dir = paths.join(ctx.bin_dir.path, ctx.label.package)
     cd_path_fix = "/".join(len(out_dir.split("/"))*[".."])
