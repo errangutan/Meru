@@ -147,7 +147,6 @@ def _test_impl(ctx):
 
     out_dir = paths.join(ctx.bin_dir.path, ctx.label.package)
     cd_path_fix = "/".join(len(out_dir.split("/"))*[".."])
-    print (cd_path_fix)
 
     for lib_key, lib in libs.items():
 
@@ -206,7 +205,6 @@ def _test_impl(ctx):
     )
 
     daidir_path = ctx.actions.declare_directory("simv.daidir")
-    print(ctx.var)
 
     ctx.actions.run_shell(
         outputs = [simv, daidir_path],
