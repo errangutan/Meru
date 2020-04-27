@@ -136,7 +136,11 @@ test_attrs = {
         "_uvm_pkg" : attr.label(
             default = "@vcs//:uvm/uvm_pkg.sv",
             allow_single_file = True
-        )
+        ),
+        "_uvm_dpi" : attr.label(
+            default = "@vcs//:uvm/dpi/uvm_dpi.cc",
+            allow_single_file = True
+        ),
     }
 
 # Note that you must use actions.args for the arguments of the compiler 
@@ -147,7 +151,6 @@ def _test_impl(ctx):
 
     out_dir = paths.join(ctx.bin_dir.path, ctx.label.package)
     cd_path_fix = "/".join(len(out_dir.split("/"))*[".."])
-
     for lib_key, lib in libs.items():
 
         args = ctx.actions.args()
@@ -183,24 +186,22 @@ def _test_impl(ctx):
             mnemonic = "Vlogan",
             progress_message = "Analysing verilog files.",
         )
-        
-    
+
     simv = ctx.actions.declare_file("simv")
     elab_args = ctx.actions.args()
     elab_args.add_all([
         "-full64",
-        "-timescale=1ns/1ns",
+        "-timescale=%s" % ctx.attr.timescale,
         "-CFLAGS",
         "-DVCS",
         "-debug_access+all",
-        "/usr/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm/dpi/uvm_dpi.cc",
+        paths.join(local_paths.uvm_home, "dpi/uvm_dpi.cc"),
         "-j1", ctx.attr.top,
-        "-o", simv,
+        "-o", paths.join(cd_path_fix, simv.path),
     ])
 
-    command = "cd {out_dir}; {vcs} -full64 -timescale=1ns/1ns -CFLAGS -DVCS -debug_access+all /usr/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm/dpi/uvm_dpi.cc -j1 top_tb -o {simv}".format(
+    command = "tree ;cd {out_dir}; {vcs} $@".format(
         vcs = paths.join(cd_path_fix, ctx.file._vcs.path),
-	    simv = paths.join(cd_path_fix, simv.path),
         out_dir = out_dir,
     )
 
@@ -208,9 +209,9 @@ def _test_impl(ctx):
 
     ctx.actions.run_shell(
         outputs = [simv, daidir_path],
-        inputs = [AN_DB_dir, ctx.file._vcs],
+        inputs = [AN_DB_dir, ctx.file._vcs, ctx.file._uvm_dpi],
         command = command,
-        arguments = [],
+        arguments = [elab_args],
         env = {
             "VCS_HOME" : local_paths.vcs_home,
             "LM_LICENSE_FILE" : local_paths.lm_license_file,

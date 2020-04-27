@@ -22,6 +22,7 @@ local_paths = repository_rule(
     local = True,
     configure = True,
     environ = [
+        "UVM_HOME",
         "VCS_HOME",
         "VCS_LICENSE",
     ],
