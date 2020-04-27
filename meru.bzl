@@ -206,6 +206,7 @@ def _test_impl(ctx):
     )
 
     daidir_path = ctx.actions.declare_directory("simv.daidir")
+    print(ctx.var)
 
     ctx.actions.run_shell(
         outputs = [simv, daidir_path],
@@ -215,7 +216,6 @@ def _test_impl(ctx):
         env = {
             "VCS_HOME" : local_paths.vcs_home,
             "LM_LICENSE_FILE" : local_paths.lm_license_file,
-	        "UVM_HOME" : "/usr/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm",
             "SNPSLMD_LICENSE_FILE" : "27020@10.0.1.4",
             "HOME" : "/dev/null",
             "PATH" : "/usr/bin:/bin",
