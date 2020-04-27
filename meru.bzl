@@ -216,6 +216,7 @@ def _test_impl(ctx):
         env = {
             "VCS_HOME" : local_paths.vcs_home,
             "LM_LICENSE_FILE" : local_paths.lm_license_file,
+            "HOME" : "/dev/null",
             "PATH" : "/usr/bin:/bin",
         },
     )
