@@ -286,7 +286,7 @@ def _test_impl(ctx):
     #!/bin/bash
     cd {package}
     {simv} -exitstatus $@
-    """.format(package=ctx.label.package), simv_file_name)
+    """.format(package=ctx.label.package, simv=simv_file_name))
 
     return [DefaultInfo(
         executable=run_simv,
