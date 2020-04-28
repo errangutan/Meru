@@ -3,12 +3,23 @@ load("@vcs//:local_paths.bzl", "local_paths")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 
 BlockInfo = provider(
-    doc = "Provides sdc_files, and a libs dict. Each lib is a struct with a vlog_files depset and a vhdl_files depset.",
-    fields = ["vlog_libs", "vhdl_libs", "sdc_files"]
-)
+    doc = """Provides structure of source files for compiling a dependency block""",
+    fields = {
+        "vlog_libs": 
+        """A dictionary of SystemVerilog / Verilog files.
+        The key of the dictionary is the name of a library,
+        and the value is a list of source files that belong
+        to that library.""",
 
-RegsInfo = provider(
-    doc = "Provides info about the findl"
+        "vhdl_libs": """A dictionary of VHDL files.The key
+        of the dictionary is the name of a library, and the
+        value is a list of source files that belong to that
+        library.""",
+
+        "sdc_files": """A list of sdc files which are to be
+        applied to a Quartus project which uses this block.
+        """,
+    }
 )
 
 def _get_transitive_libs(files, files_lib, dependecy_libs):
@@ -39,6 +50,15 @@ def _get_transitive_libs(files, files_lib, dependecy_libs):
     return output_libs_dict
 
 def _block_impl(ctx):
+    """Implementation of the `block` rule.
+
+    Creates a `BlockInfo` provider by accessing the `BlockInfo`
+    providers of dependencies in the `blocks` attribute, and merges
+    them into a single `BlockInfo` provider, while adding the source
+    files of the current block. 
+    """
+
+    # Get flattened list of files from all files in the vlog_files targets.
     vlog_files = []
     for file_list in [target.files.to_list() for target in ctx.attr.vlog_files]:
         vlog_files += file_list 
@@ -47,17 +67,30 @@ def _block_impl(ctx):
     for file_list in [target.files.to_list() for target in ctx.attr.vhdl_files]:
         vhdl_files += file_list
 
+    # Merge vlog_libs and vhdl_libs of dependencies, and add source files of this block
+    vlog_libs = _get_transitive_libs(
+        vlog_files,
+        ctx.attr.lib,
+        [block[BlockInfo].vlog_libs for block in ctx.attr.blocks])
+
+    vhdl_libs = _get_transitive_libs(
+        vhdl_files,
+        ctx.attr.lib,
+        [block[BlockInfo].vhdl_libs for block in ctx.attr.blocks])
+
+    # Create depset from dependency sdc_files and add sdc files of this block
+    sdc_files = depset(
+        ctx.attr.sdc_files,
+        transitive = [block[BlockInfo].sdc_files for block in ctx.attr.blocks])
+
     return BlockInfo(
-        vlog_libs = _get_transitive_libs(vlog_files, ctx.attr.lib, [block[BlockInfo].vlog_libs for block in ctx.attr.blocks]),
-        vhdl_libs = _get_transitive_libs(vhdl_files, ctx.attr.lib, [block[BlockInfo].vhdl_libs for block in ctx.attr.blocks]),
-        sdc_files = depset(
-            ctx.attr.sdc_files,
-            transitive = [block[BlockInfo].sdc_files for block in ctx.attr.blocks],
-            ),
+        vlog_libs = vlog_libs,
+        vhdl_libs = vhdl_libs,
+        sdc_files = sdc_files,
     )
 
 block = rule(
-    doc = "Gathers HDL and .sdc files of a block ands it's dependencies.",
+    doc = "Gathers source files of a block ands it's dependencies.",
     implementation = _block_impl,
     attrs = {
         "vlog_files" : attr.label_list(
