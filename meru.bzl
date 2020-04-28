@@ -248,7 +248,7 @@ def _test_impl(ctx):
 
     simv_file_name = "%s_simv" % ctx.attr.name
 
-    simv = ctx.actions.declare_file(simv_file_name)
+    simv = ctx.actions.declare_file(paths.join(ctx.attr.name, simv_file_name))
     elab_args = ctx.actions.args()
     elab_args.add_all([
         "-full64",
@@ -258,15 +258,15 @@ def _test_impl(ctx):
         "-debug_access+all",
         paths.join(local_paths.uvm_home, "dpi/uvm_dpi.cc"),
         "-j1", ctx.attr.top,
-        "-o", paths.join(cd_path_fix, simv.path),
+        "-o", simv_file_name,
     ])
 
-    command = "tree ;cd {out_dir}; {vcs} $@".format(
+    command = "cd {out_dir}; pwd; {vcs} $@".format(
         vcs = paths.join(cd_path_fix, ctx.file._vcs.path),
         out_dir = out_dir,
     )
 
-    daidir_path = ctx.actions.declare_directory(paths.join(ctx.attr.name, "simv.daidir"))
+    daidir_path = ctx.actions.declare_directory(paths.join(ctx.attr.name, "%s.daidir" % simv_file_name))
 
     ctx.actions.run_shell(
         outputs = [simv, daidir_path],
@@ -283,11 +283,10 @@ def _test_impl(ctx):
 
     run_simv = ctx.actions.declare_file("run_%s_simv" % ctx.attr.name)
     ctx.actions.write(run_simv, content="""
-    #!/bin/bash
-    tree
-    cd {package}
+    #!/bin/bash 
+    cd {package}/{target_name}
     {simv} -exitstatus $@
-    """.format(package=ctx.label.package, simv=simv_file_name))
+    """.format(package=ctx.label.package, simv=simv_file_name, target_name=ctx.attr.name))
 
     return [DefaultInfo(
         executable=run_simv,
