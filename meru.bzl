@@ -206,7 +206,7 @@ def _test_impl(ctx):
             value = "=%s" % value if value != "" else ""
         ))
 
-    out_dir = paths.join(ctx.bin_dir.path, ctx.label.package)
+    out_dir = paths.join(ctx.bin_dir.path, ctx.label.package, ctx.attr.name)
     cd_path_fix = "/".join(len(out_dir.split("/"))*[".."])
     
 
@@ -225,7 +225,7 @@ def _test_impl(ctx):
         files_args = ctx.actions.args()
         files_args.add_all(vlog_files, format_each="{}/%s".format(cd_path_fix))
 
-        AN_DB_dir = ctx.actions.declare_directory("AN.DB")
+        AN_DB_dir = ctx.actions.declare_directory(paths.join(ctx.attr.name, "AN.DB"))
 
         ctx.actions.run_shell(
             inputs = depset(
@@ -266,7 +266,7 @@ def _test_impl(ctx):
         out_dir = out_dir,
     )
 
-    daidir_path = ctx.actions.declare_directory("simv.daidir")
+    daidir_path = ctx.actions.declare_directory(paths.join(ctx.attr.name, "simv.daidir"))
 
     ctx.actions.run_shell(
         outputs = [simv, daidir_path],
@@ -284,6 +284,7 @@ def _test_impl(ctx):
     run_simv = ctx.actions.declare_file("run_%s_simv" % ctx.attr.name)
     ctx.actions.write(run_simv, content="""
     #!/bin/bash
+    tree
     cd {package}
     {simv} -exitstatus $@
     """.format(package=ctx.label.package, simv=simv_file_name))
