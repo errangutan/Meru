@@ -175,7 +175,6 @@ test_attrs = {
         ),
     }
 
-# Note that you must use actions.args for the arguments of the compiler 
 def _test_impl(ctx): 
 
     has_vlog_top = ctx.file.vlog_top != None
@@ -247,7 +246,9 @@ def _test_impl(ctx):
             progress_message = "Analysing verilog files.",
         )
 
-    simv = ctx.actions.declare_file("simv")
+    simv_file_name = "%s_simv" % ctx.attr.name
+
+    simv = ctx.actions.declare_file(simv_file_name)
     elab_args = ctx.actions.args()
     elab_args.add_all([
         "-full64",
@@ -280,12 +281,12 @@ def _test_impl(ctx):
         },
     )
 
-    run_simv = ctx.actions.declare_file("run_simv")
+    run_simv = ctx.actions.declare_file("run_%s_simv" % ctx.attr.name)
     ctx.actions.write(run_simv, content="""
     #!/bin/bash
     cd {package}
-    simv -exitstatus $@
-    """.format(package=ctx.label.package))
+    {simv} -exitstatus $@
+    """.format(package=ctx.label.package), simv_file_name)
 
     return [DefaultInfo(
         executable=run_simv,
@@ -294,14 +295,92 @@ def _test_impl(ctx):
     
 
 sim_test = rule(
-    doc = "Verification test",
+    doc = "Runs a test.",
     implementation = _test_impl,
     attrs = test_attrs,
     test = True,
 )
 
 testbench = rule(
-    doc = "Testbench",
+    doc = "Testbench. Identical to `sim_test` but is not regarded as a test.",
     implementation = _test_impl,
     attrs = test_attrs,
 )
+
+def _regression_test_sanity_check(kwargs):
+    """Asserts that defines parameter is given, and is a string keyed dict of lists of strings"""
+
+    if "name" not in kwargs:
+        fail("Missing name parameter.")
+
+    if type(kwargs["name"]) != type(""):
+        fail("Expected type string for name parameter, got %s" % type(kwargs["name"]))
+
+    if "defines" not in kwargs:
+        fail("The defines paramter is mandatory. Add the defines of the regression.")
+
+    defines = kwargs["defines"]
+
+    if type(defines) != type({}):
+        fail("Expected type dict for defines paramter, got %s." % type(defines))
+
+    for define_name, value_options in defines.items():
+        if type(define_name) != type(""):
+            fail("Expected type string for key in defines dictionary, got %s." % type(define_name))
+        if type(value_options)!= type([]):
+            fail("Expected type list for value in defines dictionary, got %s." % type(value_options))
+        for value in value_options:
+            if type(value) != type("") and type(value) != type(None):
+                fail("Expected type string or None for item in list in defines dictionary, got %s" % type(value))
+    
+def _get_defines_permutations(defines_options_dict):
+
+    # Get the number of permutations in order to know how many
+    # permutations to create
+    num_of_permutations = 1
+
+    for key, options_list in defines_options_dict.items():
+        num_of_permutations *= len(options_list)
+    
+    indexes = {key : 0 for key in defines_options_dict}
+    
+    # Create all permutations between defines options
+    permutations = []
+    for i in range(num_of_permutations):
+        carry = True
+    
+        for key in defines_options_dict:
+            if carry == True:
+                carry = True if indexes[key] == len(defines_options_dict[key]) - 1 else False 
+                indexes[key] = (indexes[key] + 1) % len(defines_options_dict[key])
+    
+        permutations.append({key: defines_options_dict[key][indexes[key]] for key in defines_options_dict if defines_options_dict[key][indexes[key]] != None})
+
+    return permutations
+
+def _get_dict_copy(d):
+    return {k:v for k,v in d.items()}
+
+def regression_test(**kwargs):
+    _regression_test_sanity_check(kwargs)
+
+    defines_permutations = _get_defines_permutations(kwargs["defines"])
+
+    test_list = []
+
+    print(defines_permutations)
+
+    for i,defines in enumerate(defines_permutations):
+        sim_test_kwargs = _get_dict_copy(kwargs)
+        sim_test_kwargs["defines"] = defines
+        sim_test_kwargs["name"] = "%s_%d" % (kwargs["name"], i)
+        test_list.append(sim_test_kwargs["name"])
+        sim_test(**sim_test_kwargs)
+
+    native.test_suite(
+        name = kwargs["name"],
+        tests = test_list
+    )
+
+    
+
