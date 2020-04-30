@@ -127,11 +127,11 @@ test_attrs = {
             mandatory = True,
         ),
         "vlog_top" : attr.label(
-            doc = "```.v``` / ```.sv``` file which contains the top level module declared in ```top```. ```vlog_top``` and ```vhdl_top``` are mutually exclusive.",
+            doc = "`.v` / `.sv` file which contains the top level module declared in `top`. `vlog_top` and `vhdl_top` are mutually exclusive.",
             allow_single_file = [".sv", ".v"],
         ),
         "vhdl_top" : attr.label(
-            doc = "```.vhd``` file which contains the top level module declared in ```top```. ```vlog_top``` and ```vhdl_top``` are mutually exclusive.",
+            doc = "`.vhd` file which contains the top level module declared in `top`. `vlog_top` and `vhdl_top` are mutually exclusive.",
             allow_single_file = [".hdl"],
         ),
         "lib" : attr.string(
