@@ -1,4 +1,3 @@
-load("@bazel_json//lib:json_parser.bzl", "json_parse")
 load("@vcs//:local_paths.bzl", "local_paths")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 

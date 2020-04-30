@@ -9,6 +9,17 @@ filegroup(
 )
 """.format(name, srcs)
 
+def _bzl_lib():
+    return """
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+
+bzl_library(
+    name = "bzl-lib",
+    srcs = ["local_paths.bzl"],
+    visibility = ["//visibility:public"]
+)
+"""
+
 def _local_paths(ctx):
     
     # Create struct params formatted as var_name = $VAR, ...
@@ -34,6 +45,7 @@ def _vcs_repository_impl(ctx):
 
     ctx.file("WORKSPACE", "")
     BUILD_components = [
+        _bzl_lib(),
         """exports_files(["vcs", "uvm", "uvm/uvm_pkg.sv", "vcs/bin/vlogan", "vcs/bin/vcs"])"""
     ]
 
