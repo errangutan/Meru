@@ -5,8 +5,6 @@ meru_dependencies()
 load("//:setup.bzl", "meru_setup")
 meru_setup()
 
-print("FUCKCUFUFCKKC")
-
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 git_repository(
@@ -17,5 +15,3 @@ git_repository(
 
 load("@io_bazel_stardoc//:setup.bzl", "stardoc_repositories")
 stardoc_repositories()
-
-
