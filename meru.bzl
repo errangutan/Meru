@@ -1,5 +1,6 @@
 load("@vcs//:local_paths.bzl", "local_paths")
 load("@bazel_skylib//lib:paths.bzl", "paths")
+load("//:config.bzl", "RandomSeedProvider")
 
 BlockInfo = provider(
     doc = """Provides structure of source files for compiling a dependency block""",
@@ -172,6 +173,12 @@ test_attrs = {
             default = "@vcs//:uvm/uvm_pkg.sv",
             allow_single_file = True
         ),
+        "_random_seed" : attr.label(
+            default = "@meru//:random_seed"
+        ),
+        "seed" : attr.int(
+            default = 1
+        )
     }
 
 def _test_impl(ctx): 
@@ -280,12 +287,21 @@ def _test_impl(ctx):
         },
     )
 
+    if ctx._random_seed[RandomSeedProvider].value:
+        seed = "$RANDOM"
+    else:
+        seed = str(ctx.seed)
+
     run_simv = ctx.actions.declare_file("run_%s_simv" % ctx.attr.name)
     ctx.actions.write(run_simv, content="""
     #!/bin/bash 
     cd {package}/{target_name}
-    {simv} -exitstatus $@
-    """.format(package=ctx.label.package, simv=simv_file_name, target_name=ctx.attr.name))
+    {simv} -exitstatus +ntb_random_seed={seed} $@
+    """.format(
+        package=ctx.label.package,
+        simv=simv_file_name,
+        target_name=ctx.attr.name,
+        seed = seed))
 
     return [DefaultInfo(
         executable=run_simv,
