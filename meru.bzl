@@ -219,7 +219,7 @@ def _test_impl(ctx):
         "-o", simv_file_name,
     ])
 
-    command = "cd {out_dir}; pwd; {vcs} $@".format(
+    command = "cd {out_dir}; {vcs} $@".format(
         vcs = paths.join(cd_path_fix, ctx.file._vcs.path),
         out_dir = out_dir,
     )
@@ -301,17 +301,22 @@ def _regression_test_sanity_check(kwargs):
                 fail("Expected type string or None for item in list in defines dictionary, got %s" % type(value))
     
 def _get_defines_permutations(defines_options_dict):
+    """
+    Returns a list of all permutations between defines options.
+    This can be described as icrementing a counter, where
+    every digit is a define name: <define_n-1>...<define_1><define_0>
+    each digit has a different base, which is the number of options
+    of that define name. We stop incrementing once we reach the highest
+    "number" which can be represented by the counter.
+    """
 
-    # Get the number of permutations in order to know how many
-    # permutations to create
     num_of_permutations = 1
-
     for key, options_list in defines_options_dict.items():
         num_of_permutations *= len(options_list)
     
+    # Initiate the counter to 0
     indexes = {key : 0 for key in defines_options_dict}
     
-    # Create all permutations between defines options
     permutations = []
     for i in range(num_of_permutations):
         carry = True
@@ -329,14 +334,32 @@ def _get_dict_copy(d):
     return {k:v for k,v in d.items()}
 
 def regression_test(**kwargs):
+    """
+    Creates sim_test targets for every permutation of
+    defines, and a test suite which includes them all.
+
+    Args:
+        `name`: A unique name for the test suite.
+        
+        `defines`: A `string`-keyed `dict` of `list`s of `string`s, where each key
+        is a define name, and its associated list is its possible values. If a possible
+        value of a define is having no value, add an empty string to the list.
+        If a possible value is having the define not be defines at all, add `None` to
+        the list.
+
+        **kwargs: The rest of the parameters will simply be passed the the sim_test
+        targets.
+    """
+
     _regression_test_sanity_check(kwargs)
 
     defines_permutations = _get_defines_permutations(kwargs["defines"])
 
     test_list = []
 
-    print(defines_permutations)
-
+    # For every permutation, create a test. The target name of each test
+    # is the name kwarg + i, where i is the index of the test permutation in
+    # the permutations list.
     for i,defines in enumerate(defines_permutations):
         sim_test_kwargs = _get_dict_copy(kwargs)
         sim_test_kwargs["defines"] = defines
@@ -344,6 +367,7 @@ def regression_test(**kwargs):
         test_list.append(sim_test_kwargs["name"])
         sim_test(**sim_test_kwargs)
 
+    # Create a test suite to call all of the tests under single label.
     native.test_suite(
         name = kwargs["name"],
         tests = test_list
