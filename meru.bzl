@@ -13,8 +13,14 @@ BlockInfo = provider(
         """A depset of SystemVerilog / Verilog files, required
         to build the target.""",
 
+        "vlog_files_empty":
+        """A boolean which is `True` if `vlog_files` is empty""",
+
         "vhdl_files": """A depset of VHDL files.required
         to build the target.""",
+
+        "vhdl_files_empty":
+        """A boolean which is `True` if `vhdl_files` is empty""",
     }
 )
 
@@ -26,6 +32,22 @@ def _block_impl(ctx):
     them into a single `BlockInfo` provider, while adding the source
     files of the current block. 
     """
+
+    vlog_files_empty = True
+    for label in ctx.attr.vlog_files:
+        if len(label.files.to_list()) != 0:
+            vlog_files_empty = False
+    for block in ctx.attr.blocks:
+        if not block[BlockInfo].vlog_files_empty:
+            vlog_files_empty = False
+
+    vhdl_files_empty = True
+    for label in ctx.attr.vhdl_files:
+        if len(label.files.to_list()) != 0:
+            vhdl_files_empty = False
+    for block in ctx.attr.blocks:
+        if not block[BlockInfo].vhdl_files_empty:
+            vhdl_files_empty = False
 
     # Accumulate all file types into their depsets
     vlog_files = depset(
@@ -41,6 +63,8 @@ def _block_impl(ctx):
     return BlockInfo(
         vlog_files = vlog_files,
         vhdl_files = vhdl_files,
+        vlog_files_empty = vlog_files_empty,
+        vhdl_files_empty = vhdl_files_empty,
     )
 
 block = rule(
@@ -148,6 +172,20 @@ def _test_impl(ctx):
         transitive = [block[BlockInfo].vhdl_files for block in ctx.attr.blocks]
     )
 
+    vlog_files_empty = True
+    for block in ctx.attr.blocks:
+        if not block[BlockInfo].vlog_files_empty:
+            vlog_files_empty = False
+    if has_vlog_top:
+        vlog_files_empty = False
+
+    vhdl_files_empty = True
+    for block in ctx.attr.blocks:
+        if not block[BlockInfo].vhdl_files_empty:
+            vhdl_files_empty = False
+    if has_vhdl_top:
+        vhdl_files_empty = False
+
     # Create define arguments. Each arg is formatted as +define+NAME=VALUE
     # if value is "", the arg format is +define+NAME
     vlog_defines_args = ctx.actions.args()
@@ -163,70 +201,72 @@ def _test_impl(ctx):
     out_dir = paths.join(ctx.bin_dir.path, ctx.label.package, ctx.attr.name)
     cd_path_fix = "/".join(len(out_dir.split("/"))*[".."])
 
-    vlog_args = ctx.actions.args()
-    vlog_args.add_all([
-        "-full64",
-        "-nc",
-        "+incdir+%s" % paths.join(cd_path_fix, ctx.file._uvm.path),
-        paths.join(cd_path_fix, ctx.file._uvm_pkg.path),
-        "-ntb_opts","uvm",
-        "-sverilog",
-    ])
+    if not vlog_files_empty:
+        vlog_args = ctx.actions.args()
+        vlog_args.add_all([
+            "-full64",
+            "-nc",
+            "+incdir+%s" % paths.join(cd_path_fix, ctx.file._uvm.path),
+            paths.join(cd_path_fix, ctx.file._uvm_pkg.path),
+            "-ntb_opts","uvm",
+            "-sverilog",
+        ])
 
-    # Create vlog files arguments. Each file must pre prepended with
-    # the cd_path_fix, since thier path must be fixed once cd'ing into
-    # the output directory.
-    vlog_files_args = ctx.actions.args()
-    vlog_files_args.add_all(vlog_files, format_each="{}/%s".format(cd_path_fix))
+        # Create vlog files arguments. Each file must pre prepended with
+        # the cd_path_fix, since thier path must be fixed once cd'ing into
+        # the output directory.
+        vlog_files_args = ctx.actions.args()
+        vlog_files_args.add_all(vlog_files, format_each="{}/%s".format(cd_path_fix))
 
-    AN_DB_dir = ctx.actions.declare_directory(paths.join(ctx.attr.name, "AN.DB"))
+        AN_DB_dir = ctx.actions.declare_directory(paths.join(ctx.attr.name, "AN.DB"))
 
-    ctx.actions.run_shell(
-        inputs = depset(
-            [ctx.file._uvm_pkg, ctx.file._vlogan],
-            transitive=[vlog_files]),
-        outputs = [AN_DB_dir],
-        command = "cd {out_dir} && {vlogan} $@".format(
-            vlogan = paths.join(cd_path_fix, ctx.file._vlogan.path),
-            out_dir = out_dir,
-        ),
-        arguments = [vlog_args, vlog_defines_args, vlog_files_args],
-        env = {
-            "VCS_HOME" : local_paths.vcs_home,
-            "HOME" : "/dev/null",
-            "UVM_HOME" : local_paths.uvm_home
-        },
-        mnemonic = "Vlogan",
-        progress_message = "Analysing verilog files.",
-    )
+        ctx.actions.run_shell(
+            inputs = depset(
+                [ctx.file._uvm_pkg, ctx.file._vlogan],
+                transitive=[vlog_files]),
+            outputs = [AN_DB_dir],
+            command = "cd {out_dir} && {vlogan} $@".format(
+                vlogan = paths.join(cd_path_fix, ctx.file._vlogan.path),
+                out_dir = out_dir,
+            ),
+            arguments = [vlog_args, vlog_defines_args, vlog_files_args],
+            env = {
+                "VCS_HOME" : local_paths.vcs_home,
+                "HOME" : "/dev/null",
+                "UVM_HOME" : local_paths.uvm_home
+            },
+            mnemonic = "Vlogan",
+            progress_message = "Analysing verilog files.",
+        )
 
-    vhdlan_args = ctx.actions.args()
-    vhdlan_args.add_all([
-        "-nc",
-        "-full64"
-    ])
-    vhdl_files_args = ctx.actions.args()
-    vhdl_files_args.add_all(vhdl_files, format_each="{}/%s".format(cd_path_fix))
-    vhdl_andb_dir = ctx.actions.declare_directory(paths.join(ctx.attr.name, "64"))
+    if not vhdl_files_empty:
+        vhdlan_args = ctx.actions.args()
+        vhdlan_args.add_all([
+            "-nc",
+            "-full64"
+        ])
+        vhdl_files_args = ctx.actions.args()
+        vhdl_files_args.add_all(vhdl_files, format_each="{}/%s".format(cd_path_fix))
+        vhdl_andb_dir = ctx.actions.declare_directory(paths.join(ctx.attr.name, "64"))
 
-    ctx.actions.run_shell(
-        inputs = depset(
-            [ctx.file._vhdlan],
-            transitive=[vhdl_files]),
-        outputs = [vhdl_andb_dir],
-        command = "cd {out_dir} && {vhdlan} $@".format(
-            vhdlan = paths.join(cd_path_fix, ctx.file._vhdlan.path),
-            out_dir = out_dir,
-        ),
-        arguments = [vhdlan_args, vhdl_files_args],
-        env = {
-            "VCS_HOME" : local_paths.vcs_home,
-            "HOME" : "/dev/null",
-            "UVM_HOME" : local_paths.uvm_home
-        },
-        mnemonic = "Vhdlan",
-        progress_message = "Analysing vhdl files.",
-    )
+        ctx.actions.run_shell(
+            inputs = depset(
+                [ctx.file._vhdlan],
+                transitive=[vhdl_files]),
+            outputs = [vhdl_andb_dir],
+            command = "cd {out_dir} && {vhdlan} $@".format(
+                vhdlan = paths.join(cd_path_fix, ctx.file._vhdlan.path),
+                out_dir = out_dir,
+            ),
+            arguments = [vhdlan_args, vhdl_files_args],
+            env = {
+                "VCS_HOME" : local_paths.vcs_home,
+                "HOME" : "/dev/null",
+                "UVM_HOME" : local_paths.uvm_home
+            },
+            mnemonic = "Vhdlan",
+            progress_message = "Analysing vhdl files.",
+        )
 
     # simv is created with a name unique to the target.
     # if the name is not unique, different targets under the same package
