@@ -294,7 +294,7 @@ def _test_impl(ctx):
     if ctx.attr._random_seed[RandomSeedProvider].value:
         seed = "$RANDOM"
     else:
-        seed = str(ctx.seed)
+        seed = str(ctx.attr.seed)
 
     run_simv = ctx.actions.declare_file("run_%s_simv" % ctx.attr.name)
     ctx.actions.write(run_simv, content="""
