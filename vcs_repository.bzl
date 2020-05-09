@@ -1,14 +1,5 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
 
-def _file_group(name, srcs):
-    return """
-filegroup(
-    name = "{}",
-    srcs = {},
-    visibility = ["//visibility:public"]
-)
-""".format(name, srcs)
-
 def _bzl_lib():
     return """
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
