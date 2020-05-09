@@ -274,9 +274,9 @@ def _test_impl(ctx):
 
     run_simv = ctx.actions.declare_file("run_%s_simv" % ctx.attr.name)
     ctx.actions.write(run_simv, content="""
-    #!/bin/bash 
-    cd {package}/{target_name}
-    {simv} -exitstatus +ntb_random_seed={seed} $@
+#!/bin/bash
+cd {package}/{target_name} &&
+{simv} -exitstatus +ntb_random_seed={seed} $@
     """.format(
         package=ctx.label.package,
         simv=simv_file_name,
