@@ -205,9 +205,7 @@ def _test_impl(ctx):
     # if the name is not unique, different targets under the same package
     # which are built concurrently will collide. 
     simv_file_name = "%s_simv" % ctx.attr.name
-    # TODO: Check if this decleration is correct. It looks like the target name is
-    # prepended twice
-    simv = ctx.actions.declare_file(paths.join(ctx.attr.name, simv_file_name))
+    simv = ctx.actions.declare_file(simv_file_name)
     
     elab_args = ctx.actions.args()
     elab_args.add_all([
