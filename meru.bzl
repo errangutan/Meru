@@ -1,3 +1,7 @@
+"""
+Rules are for fools
+"""
+
 load("@vcs//:local_paths.bzl", "local_paths")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("//:config.bzl", "RandomSeedProvider")
@@ -287,7 +291,7 @@ def _test_impl(ctx):
         },
     )
 
-    if ctx._random_seed[RandomSeedProvider].value:
+    if ctx.attr._random_seed[RandomSeedProvider].value:
         seed = "$RANDOM"
     else:
         seed = str(ctx.seed)

@@ -15,6 +15,7 @@ bzl_library(
         "config.bzl"
     ],
     deps = [
-        "@bazel_skylib//lib:paths"
+        "@bazel_skylib//lib:paths",
+        "@vcs//:bzl-lib"
     ]
 )
