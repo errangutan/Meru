@@ -55,7 +55,7 @@ block = rule(
         "vhdl_files" : attr.label_list(
             doc = "List fo .vhdl files.",
             default = [],
-            allow_files = [".vhdl"],
+            allow_files = [".vhd"],
         ),
         "lib" : attr.string(
             doc = "Name of library of HDL files.",
