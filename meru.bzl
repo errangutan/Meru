@@ -102,6 +102,10 @@ test_attrs = {
             default = "@vcs//:vcs/bin/vlogan",
             allow_single_file = True
         ),
+        "_vhdlan" : attr.label(
+            default = "@vcs//:vcs/bin/vhdlan",
+            allow_single_file = True
+        ),
         "_uvm" : attr.label(
             default = "@vcs//:uvm",
             allow_single_file = True
@@ -162,7 +166,7 @@ def _test_impl(ctx):
     vlog_args = ctx.actions.args()
     vlog_args.add_all([
         "-full64",
-        "-work","WORK",
+        "-nc",
         "+incdir+%s" % paths.join(cd_path_fix, ctx.file._uvm.path),
         paths.join(cd_path_fix, ctx.file._uvm_pkg.path),
         "-ntb_opts","uvm",
@@ -172,8 +176,8 @@ def _test_impl(ctx):
     # Create vlog files arguments. Each file must pre prepended with
     # the cd_path_fix, since thier path must be fixed once cd'ing into
     # the output directory.
-    files_args = ctx.actions.args()
-    files_args.add_all(vlog_files, format_each="{}/%s".format(cd_path_fix))
+    vlog_files_args = ctx.actions.args()
+    vlog_files_args.add_all(vlog_files, format_each="{}/%s".format(cd_path_fix))
 
     AN_DB_dir = ctx.actions.declare_directory(paths.join(ctx.attr.name, "AN.DB"))
 
@@ -182,11 +186,11 @@ def _test_impl(ctx):
             [ctx.file._uvm_pkg, ctx.file._vlogan],
             transitive=[vlog_files]),
         outputs = [AN_DB_dir],
-        command = "cd {out_dir};{vlogan} $@".format(
+        command = "cd {out_dir} && {vlogan} $@".format(
             vlogan = paths.join(cd_path_fix, ctx.file._vlogan.path),
             out_dir = out_dir,
         ),
-        arguments = [vlog_args, vlog_defines_args, files_args],
+        arguments = [vlog_args, vlog_defines_args, vlog_files_args],
         env = {
             "VCS_HOME" : local_paths.vcs_home,
             "HOME" : "/dev/null",
@@ -194,6 +198,34 @@ def _test_impl(ctx):
         },
         mnemonic = "Vlogan",
         progress_message = "Analysing verilog files.",
+    )
+
+    vhdlan_args = ctx.actions.args()
+    vhdlan_args.add_all([
+        "-nc",
+        "-full64"
+    ])
+    vhdl_files_args = ctx.actions.args()
+    vhdl_files_args.add_all(vhdl_files, format_each="{}/%s".format(cd_path_fix))
+    vhdl_andb_dir = ctx.actions.declare_directory(paths.join(ctx.attr.name, "64"))
+
+    ctx.actions.run_shell(
+        inputs = depset(
+            [ctx.file._vhdlan],
+            transitive=[vhdl_files]),
+        outputs = [vhdl_andb_dir],
+        command = "cd {out_dir} && {vhdlan} $@".format(
+            vhdlan = paths.join(cd_path_fix, ctx.file._vhdlan.path),
+            out_dir = out_dir,
+        ),
+        arguments = [vhdlan_args, vhdl_files_args],
+        env = {
+            "VCS_HOME" : local_paths.vcs_home,
+            "HOME" : "/dev/null",
+            "UVM_HOME" : local_paths.uvm_home
+        },
+        mnemonic = "Vhdlan",
+        progress_message = "Analysing vhdl files.",
     )
 
     # simv is created with a name unique to the target.
@@ -210,11 +242,12 @@ def _test_impl(ctx):
         "-DVCS",
         "-debug_access+all",
         paths.join(local_paths.uvm_home, "dpi/uvm_dpi.cc"),
-        "-j1", ctx.attr.top,
+        "-j1",
+        ctx.attr.top,
         "-o", simv_file_name,
     ])
 
-    command = "cd {out_dir}; {vcs} $@".format(
+    command = "cd {out_dir} && {vcs} $@".format(
         vcs = paths.join(cd_path_fix, ctx.file._vcs.path),
         out_dir = out_dir,
     )
@@ -223,7 +256,7 @@ def _test_impl(ctx):
 
     ctx.actions.run_shell(
         outputs = [simv, daidir_path],
-        inputs = [AN_DB_dir, ctx.file._vcs, ctx.file._uvm],
+        inputs = [AN_DB_dir, vhdl_andb_dir, ctx.file._vcs, ctx.file._uvm],
         command = command,
         arguments = [elab_args],
         env = {
