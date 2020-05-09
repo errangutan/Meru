@@ -1,7 +1,3 @@
-"""
-Rules are for fools
-"""
-
 load("@vcs//:local_paths.bzl", "local_paths")
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("//:config.bzl", "RandomSeedProvider")
@@ -201,6 +197,8 @@ def _test_impl(ctx):
     out_dir = paths.join(ctx.bin_dir.path, ctx.label.package, ctx.attr.name)
     cd_path_fix = "/".join(len(out_dir.split("/"))*[".."])
 
+    analysis_outputs = []
+
     if not vlog_files_empty:
         vlog_args = ctx.actions.args()
         vlog_args.add_all([
@@ -219,6 +217,7 @@ def _test_impl(ctx):
         vlog_files_args.add_all(vlog_files, format_each="{}/%s".format(cd_path_fix))
 
         AN_DB_dir = ctx.actions.declare_directory(paths.join(ctx.attr.name, "AN.DB"))
+        analysis_outputs.append(AN_DB_dir)
 
         ctx.actions.run_shell(
             inputs = depset(
@@ -248,6 +247,7 @@ def _test_impl(ctx):
         vhdl_files_args = ctx.actions.args()
         vhdl_files_args.add_all(vhdl_files, format_each="{}/%s".format(cd_path_fix))
         vhdl_andb_dir = ctx.actions.declare_directory(paths.join(ctx.attr.name, "64"))
+        analysis_outputs.append(vhdl_andb_dir)
 
         ctx.actions.run_shell(
             inputs = depset(
@@ -296,7 +296,10 @@ def _test_impl(ctx):
 
     ctx.actions.run_shell(
         outputs = [simv, daidir_path],
-        inputs = [AN_DB_dir, vhdl_andb_dir, ctx.file._vcs, ctx.file._uvm],
+        inputs = analysis_outputs + [
+            ctx.file._vcs,
+            ctx.file._uvm
+        ],
         command = command,
         arguments = [elab_args],
         env = {
