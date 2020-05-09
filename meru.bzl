@@ -57,10 +57,6 @@ block = rule(
             default = [],
             allow_files = [".vhd"],
         ),
-        "lib" : attr.string(
-            doc = "Name of library of HDL files.",
-            default = "work",
-        ),
         "blocks" : attr.label_list(
             doc = "List of blocks this block depends on.",
             default = [],
@@ -181,7 +177,6 @@ def _test_impl(ctx):
 
     AN_DB_dir = ctx.actions.declare_directory(paths.join(ctx.attr.name, "AN.DB"))
 
-    #TODO: add vlogan as an input/tool
     ctx.actions.run_shell(
         inputs = depset(
             [ctx.file._uvm_pkg, ctx.file._vlogan],
