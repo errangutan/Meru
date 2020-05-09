@@ -9,49 +9,14 @@ load("//:config.bzl", "RandomSeedProvider")
 BlockInfo = provider(
     doc = """Provides structure of source files for compiling a dependency block""",
     fields = {
-        "vlog_libs": 
-        """A dictionary of SystemVerilog / Verilog files.
-        The key of the dictionary is the name of a library,
-        and the value is a list of source files that belong
-        to that library.""",
+        "vlog_files": 
+        """A depset of SystemVerilog / Verilog files, required
+        to build the target.""",
 
-        "vhdl_libs": """A dictionary of VHDL files.The key
-        of the dictionary is the name of a library, and the
-        value is a list of source files that belong to that
-        library.""",
-
-        "sdc_files": """A list of sdc files which are to be
-        applied to a Quartus project which uses this block.
-        """,
+        "vhdl_files": """A depset of VHDL files.required
+        to build the target.""",
     }
 )
-
-def _get_transitive_libs(files, files_lib, dependecy_libs):
-    """Merges between depsets of same library in different
-    dependencies, adds `files` to the lib `files_lib`
-    and returns the merged lib construct.
-
-    Args:
-        `files`: List of `File` objects
-        `files_lib`: Name of library `files` belong to
-        `dependency_libs`: List of library constructs which are to be merged to single library. 
-    """
-
-    # Get all lib names in side lib dicts
-    libs = [files_lib]
-    for lib_dict in dependecy_libs:
-        libs.extend(lib_dict.keys())
-    libs = [x for i,x in enumerate(libs) if x not in libs[:i]] # Remove doubles
-
-    # For every library we found in the libs dicts, get all depsets of that library
-    output_libs_dict = {}
-    for lib in libs:
-        output_libs_dict[lib] = depset(
-            files if lib == files_lib else [],
-            transitive=[lib_dict[lib] for lib_dict in dependecy_libs if lib in lib_dict]
-            )
-
-    return output_libs_dict
 
 def _block_impl(ctx):
     """Implementation of the `block` rule.
@@ -62,35 +27,20 @@ def _block_impl(ctx):
     files of the current block. 
     """
 
-    # Get flattened list of files from all files in the vlog_files targets.
-    vlog_files = []
-    for file_list in [target.files.to_list() for target in ctx.attr.vlog_files]:
-        vlog_files += file_list 
+    # Accumulate all file types into their depsets
+    vlog_files = depset(
+        transitive = [block[BlockInfo].vlog_files for block in ctx.attr.blocks] + 
+        [label.files for label in ctx.attr.vlog_files]
+    )
 
-    vhdl_files = []
-    for file_list in [target.files.to_list() for target in ctx.attr.vhdl_files]:
-        vhdl_files += file_list
-
-    # Merge vlog_libs and vhdl_libs of dependencies, and add source files of this block
-    vlog_libs = _get_transitive_libs(
-        vlog_files,
-        ctx.attr.lib,
-        [block[BlockInfo].vlog_libs for block in ctx.attr.blocks])
-
-    vhdl_libs = _get_transitive_libs(
-        vhdl_files,
-        ctx.attr.lib,
-        [block[BlockInfo].vhdl_libs for block in ctx.attr.blocks])
-
-    # Create depset from dependency sdc_files and add sdc files of this block
-    sdc_files = depset(
-        ctx.attr.sdc_files,
-        transitive = [block[BlockInfo].sdc_files for block in ctx.attr.blocks])
+    vhdl_files = depset(
+        transitive = [block[BlockInfo].vhdl_files for block in ctx.attr.blocks] + 
+        [label.files for label in ctx.attr.vhdl_files]
+    )
 
     return BlockInfo(
-        vlog_libs = vlog_libs,
-        vhdl_libs = vhdl_libs,
-        sdc_files = sdc_files,
+        vlog_files = vlog_files,
+        vhdl_files = vhdl_files,
     )
 
 block = rule(
@@ -110,11 +60,6 @@ block = rule(
         "lib" : attr.string(
             doc = "Name of library of HDL files.",
             default = "work",
-        ),
-        "sdc_files" : attr.label_list(
-            doc = "List of sdc files which are to be applied for PNR.",
-            default = [],
-            allow_files = [".sdc"],
         ),
         "blocks" : attr.label_list(
             doc = "List of blocks this block depends on.",
@@ -138,10 +83,6 @@ test_attrs = {
         "vhdl_top" : attr.label(
             doc = "`.vhd` file which contains the top level module declared in `top`. `vlog_top` and `vhdl_top` are mutually exclusive.",
             allow_single_file = [".hdl"],
-        ),
-        "lib" : attr.string(
-            doc = "Name of library of the top_file.",
-            default = "work",
         ),
         "blocks" : attr.label_list(
             default = [],
@@ -196,16 +137,16 @@ def _test_impl(ctx):
     if not (has_vhdl_top or has_vlog_top):
         fail("No top file assigned. Assign vlog_top or vhdl_top.")
 
-    # Merge libs of dependencies into single dict, and add top file
-    vlog_libs = _get_transitive_libs(
+    # Merge depsets of dependencies into single depset, and add top file
+    vlog_files = depset(
         [ctx.file.vlog_top] if has_vlog_top else [],
-        ctx.attr.lib,
-        [block[BlockInfo].vlog_libs for block in ctx.attr.blocks])
-
-    vhdl_libs = _get_transitive_libs(
+        transitive = [block[BlockInfo].vlog_files for block in ctx.attr.blocks]
+    )
+    
+    vhdl_files = depset(
         [ctx.file.vhdl_top] if has_vhdl_top else [],
-        ctx.attr.lib,
-        [block[BlockInfo].vhdl_libs for block in ctx.attr.blocks])
+        transitive = [block[BlockInfo].vhdl_files for block in ctx.attr.blocks]
+    )
 
     # Create define arguments. Each arg is formatted as +define+NAME=VALUE
     # if value is "", the arg format is +define+NAME
@@ -216,49 +157,58 @@ def _test_impl(ctx):
             value = "=%s" % value if value != "" else ""
         ))
 
+    # Get the path where vlogan and vhdlan should pr run.
+    # Once the output directory is resolved, get the relation
+    # between the output directory and the source files root
     out_dir = paths.join(ctx.bin_dir.path, ctx.label.package, ctx.attr.name)
     cd_path_fix = "/".join(len(out_dir.split("/"))*[".."])
-    
 
-    for lib_key, vlog_files in vlog_libs.items():
+    vlog_args = ctx.actions.args()
+    vlog_args.add_all([
+        "-full64",
+        "-work","WORK",
+        "+incdir+%s" % paths.join(cd_path_fix, ctx.file._uvm.path),
+        paths.join(cd_path_fix, ctx.file._uvm_pkg.path),
+        "-ntb_opts","uvm",
+        "-sverilog",
+    ])
 
-        vlog_args = ctx.actions.args()
-        vlog_args.add_all([
-            "-full64",
-            "-work","WORK",
-            "+incdir+%s" % paths.join(cd_path_fix, ctx.file._uvm.path),
-            paths.join(cd_path_fix, ctx.file._uvm_pkg.path),
-            "-ntb_opts","uvm",
-            "-sverilog",
-        ])
+    # Create vlog files arguments. Each file must pre prepended with
+    # the cd_path_fix, since thier path must be fixed once cd'ing into
+    # the output directory.
+    files_args = ctx.actions.args()
+    files_args.add_all(vlog_files, format_each="{}/%s".format(cd_path_fix))
 
-        files_args = ctx.actions.args()
-        files_args.add_all(vlog_files, format_each="{}/%s".format(cd_path_fix))
+    AN_DB_dir = ctx.actions.declare_directory(paths.join(ctx.attr.name, "AN.DB"))
 
-        AN_DB_dir = ctx.actions.declare_directory(paths.join(ctx.attr.name, "AN.DB"))
+    #TODO: add vlogan as an input/tool
+    ctx.actions.run_shell(
+        inputs = depset(
+            [ctx.file._uvm_pkg, ctx.file._vlogan],
+            transitive=[vlog_files]),
+        outputs = [AN_DB_dir],
+        command = "cd {out_dir};{vlogan} $@".format(
+            vlogan = paths.join(cd_path_fix, ctx.file._vlogan.path),
+            out_dir = out_dir,
+        ),
+        arguments = [vlog_args, vlog_defines_args, files_args],
+        env = {
+            "VCS_HOME" : local_paths.vcs_home,
+            "HOME" : "/dev/null",
+            "UVM_HOME" : local_paths.uvm_home
+        },
+        mnemonic = "Vlogan",
+        progress_message = "Analysing verilog files.",
+    )
 
-        ctx.actions.run_shell(
-            inputs = depset(
-                [ctx.file._uvm_pkg, ctx.file._vlogan],
-                transitive=[vlog_files]),
-            outputs = [AN_DB_dir],
-            command = "cd {out_dir};{vlogan} $@".format(
-                vlogan = paths.join(cd_path_fix, ctx.file._vlogan.path),
-                out_dir = out_dir,
-            ),
-            arguments = [vlog_args, vlog_defines_args, files_args],
-            env = {
-                "VCS_HOME" : local_paths.vcs_home,
-                "HOME" : "/dev/null",
-		        "UVM_HOME" : local_paths.uvm_home
-            },
-            mnemonic = "Vlogan",
-            progress_message = "Analysing verilog files.",
-        )
-
+    # simv is created with a name unique to the target.
+    # if the name is not unique, different targets under the same package
+    # which are built concurrently will collide. 
     simv_file_name = "%s_simv" % ctx.attr.name
-
+    # TODO: Check if this decleration is correct. It looks like the target name is
+    # prepended twice
     simv = ctx.actions.declare_file(paths.join(ctx.attr.name, simv_file_name))
+    
     elab_args = ctx.actions.args()
     elab_args.add_all([
         "-full64",
