@@ -12,10 +12,10 @@ bzl_library(
     name = "meru",
     srcs = [
         "meru.bzl",
-        "config.bzl"
+        "config.bzl",
+        "data_provider.bzl",
     ],
     deps = [
         "@bazel_skylib//lib:paths",
-        "@vcs//:bzl-lib"
     ]
 )

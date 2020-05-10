@@ -1,5 +1,5 @@
-load("@vcs//:local_paths.bzl", "local_paths")
 load("@bazel_skylib//lib:paths.bzl", "paths")
+load("//:data_provider.bzl", "Data")
 load("//:config.bzl", "RandomSeedProvider")
 
 BlockInfo = provider(
@@ -111,9 +111,21 @@ test_attrs = {
             default = "@vcs//:vcs",
             allow_single_file = True
         ),
+        "_vcs_env" : attr.label(
+            default = "@vcs//:vcs_env"
+        ),
     }
 
-def _test_impl(ctx): 
+def _test_impl(ctx):
+
+    vcs_env = ctx.attr._vcs_env[Data].data
+    for var_name in dir(vcs_env):
+        if getattr(vcs_env, var_name) == None:
+            fail("""{0} is required to run VCS but was not set. You can
+            set the variable by adding the following line to the system-wide
+            bazelrc file (/etc/bazel.bazelrc):
+            build --action_env {0}=<value>
+            """.format(var_name))
 
     has_vlog_top = ctx.file.vlog_top != None
     has_vhdl_top = ctx.file.vhdl_top != None
@@ -183,7 +195,7 @@ def _test_impl(ctx):
             ),
             arguments = [vlog_args, vlog_defines_args, vlog_files_args],
             env = {
-                "VCS_HOME" : local_paths.vcs_home,
+                "VCS_HOME" : vcs_env.VCS_HOME,
                 "HOME" : "/dev/null",
             },
             mnemonic = "Vlogan",
@@ -212,7 +224,7 @@ def _test_impl(ctx):
             ),
             arguments = [vhdlan_args, vhdl_files_args],
             env = {
-                "VCS_HOME" : local_paths.vcs_home,
+                "VCS_HOME" : vcs_env.VCS_HOME,
                 "HOME" : "/dev/null",
             },
             mnemonic = "Vhdlan",
@@ -255,8 +267,8 @@ def _test_impl(ctx):
         command = command,
         arguments = [elab_args],
         env = {
-            "VCS_HOME" : local_paths.vcs_home,
-            "LM_LICENSE_FILE" : local_paths.lm_license_file,
+            "VCS_HOME" : vcs_env.VCS_HOME,
+            "LM_LICENSE_FILE" : vcs_env.LM_LICENSE_FILE,
             "HOME" : "/dev/null",
             "PATH" : "/usr/bin:/bin",
         },
