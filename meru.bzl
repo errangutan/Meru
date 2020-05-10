@@ -3,7 +3,7 @@ load("@bazel_skylib//lib:paths.bzl", "paths")
 load("//:config.bzl", "RandomSeedProvider")
 
 BlockInfo = provider(
-    doc = """Provides structure of source files for compiling a dependency block""",
+    doc = """Provides structure of source files for compiling a block""",
     fields = {
         "vlog_files": 
         """A depset of SystemVerilog / Verilog files, required
@@ -69,16 +69,19 @@ test_attrs = {
             mandatory = True,
         ),
         "vlog_top" : attr.label(
-            doc = "`.v` / `.sv` file which contains the top level module declared in `top`. `vlog_top` and `vhdl_top` are mutually exclusive.",
+            doc = """`.v` / `.sv` file which contains the top level module declared
+             in `top`. `vlog_top` and `vhdl_top` are mutually exclusive.""",
             allow_single_file = [".sv", ".v"],
         ),
         "vhdl_top" : attr.label(
-            doc = "`.vhd` file which contains the top level module declared in `top`. `vlog_top` and `vhdl_top` are mutually exclusive.",
+            doc = """`.vhd` file which contains the top level module declared in
+            `top`. `vlog_top` and `vhdl_top` are mutually exclusive.""",
             allow_single_file = [".hdl"],
         ),
         "blocks" : attr.label_list(
             default = [],
-            doc = "List of blocks this test depends on.",
+            doc = """List of blocks this test depends on. Any target which provides
+            a `BlockInfo` provider can be in this list.""",
             allow_files = False,
             providers = [BlockInfo],
         ),
@@ -94,6 +97,12 @@ test_attrs = {
             doc = "Elaboration timescale flag",
             default = "1ns/1ns",
         ),
+        "seed" : attr.int(
+            default = 1
+        ),
+        "_random_seed" : attr.label(
+            default = "@meru//:random_seed"
+        ),
         "_uvm" : attr.label(
             default = "@vcs//:uvm",
             allow_single_file = True
@@ -102,12 +111,6 @@ test_attrs = {
             default = "@vcs//:vcs",
             allow_single_file = True
         ),
-        "_random_seed" : attr.label(
-            default = "@meru//:random_seed"
-        ),
-        "seed" : attr.int(
-            default = 1
-        )
     }
 
 def _test_impl(ctx): 
@@ -240,7 +243,8 @@ def _test_impl(ctx):
         out_dir = out_dir,
     )
 
-    daidir_path = ctx.actions.declare_directory(paths.join(ctx.attr.name, "%s.daidir" % simv_file_name))
+    daidir_path = ctx.actions.declare_directory(
+        paths.join(ctx.attr.name, "%s.daidir" % simv_file_name))
 
     ctx.actions.run_shell(
         outputs = [simv, daidir_path],
@@ -294,7 +298,7 @@ testbench = rule(
 )
 
 def _regression_test_sanity_check(kwargs):
-    """Asserts that defines parameter is given, and is a string keyed dict of lists of strings"""
+    """Asserts that `defines` parameter is given, and is a string keyed dict of lists of strings"""
 
     if "name" not in kwargs:
         fail("Missing name parameter.")
