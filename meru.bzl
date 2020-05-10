@@ -362,21 +362,20 @@ def _get_dict_copy(d):
     return {k:v for k,v in d.items()}
 
 def regression_test(**kwargs):
-    """
-    Creates sim_test targets for every permutation of
-    defines, and a test suite which includes them all.
+    """Runs a regression test.
+    
+    This macro creates sim_test targets for every permutation of defines,
+    and a test suite which includes them all.
 
     Args:
-        `name`: A unique name for the test suite.
-        
-        `defines`: A `string`-keyed `dict` of `list`s of `string`s, where each key
-        is a define name, and its associated list is its possible values. If a possible
-        value of a define is having no value, add an empty string to the list.
-        If a possible value is having the define not be defines at all, add `None` to
-        the list.
-
+        name: A unique name for the test suite.
+        defines: A `string`-keyed `dict` of `list`s of `string`s, where each key
+            is a define name, and its associated list is its possible values. If a possible
+            value of a define is having no value, add an empty string to the list.
+            If a possible value is having the define not be defines at all, add `None` to
+            the list.
         **kwargs: The rest of the parameters will simply be passed the the sim_test
-        targets.
+            targets.
     """
 
     _regression_test_sanity_check(kwargs)
