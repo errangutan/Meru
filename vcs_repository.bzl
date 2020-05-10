@@ -9,11 +9,10 @@ def _vcs_repository_impl(ctx):
     # Sanity check for environment variables.
     for var in vcs_env_vars:
         if not var in environ:
-            fail("""{0} is required to run VCS but was not set. You can
-            set the variable by adding the following line to the system-wide
-            bazelrc file (/etc/bazel.bazelrc):
-            build --action_env {0}=<value>
-            """.format(var))
+            fail("""{0} is required to run VCS but was not set. You can\
+set the variable by adding the following line to the system-wide\
+bazelrc file (/etc/bazel.bazelrc):\
+build --action_env {0}=<value>""".format(var))
 
     # Create symlinks which will be exported
     ctx.symlink(environ["VCS_HOME"], "vcs")
@@ -35,7 +34,7 @@ vcs_repository = repository_rule(
     repository gives Merus rules access to files associated with VCS,
     and provides the environment variables needed to run VCS via the `vcs_env`
     target.
-    """
+    """,
     implementation = _vcs_repository_impl,
     environ = ["UVM_HOME"] + vcs_env_vars,
     configure = True,
