@@ -364,7 +364,7 @@ def _get_dict_copy(d):
 def regression_test(**kwargs):
     """Runs a regression test.
     
-    This macro creates sim_test targets for every permutation of defines,
+    This macro creates `sim_test` targets for every permutation of defines,
     and a test suite which includes them all.
 
     Args:
