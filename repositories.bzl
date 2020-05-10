@@ -1,7 +1,13 @@
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-def meru_dependencies():   
+def meru_dependencies():
+    """Loads merus dependencies.
+    
+    This is required to be called by any
+    workspaces which depend on Meru.
+    """
+
     maybe(
         http_archive,
         name = "bazel_skylib",

@@ -1,3 +1,8 @@
+# The rule data_provider is used by a repository_rule to provide
+# data regarding the initialization of the repository. This is used
+# to pass the environment variables required to run VCS to Meru rules
+# by depending on a data_provider target.s
+
 Data = provider(fields = {"data" : "String keyed dictionary of strings"})
 
 def _data_provider_impl(ctx):
