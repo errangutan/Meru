@@ -118,14 +118,6 @@ test_attrs = {
             doc = "Elaboration timescale flag",
             default = "1ns/1ns",
         ),
-        "_vlogan" : attr.label(
-            default = "@vcs//:vcs/bin/vlogan",
-            allow_single_file = True
-        ),
-        "_vhdlan" : attr.label(
-            default = "@vcs//:vcs/bin/vhdlan",
-            allow_single_file = True
-        ),
         "_uvm" : attr.label(
             default = "@vcs//:uvm",
             allow_single_file = True
@@ -229,7 +221,7 @@ def _test_impl(ctx):
                 transitive=[vlog_files]),
             outputs = [AN_DB_dir],
             command = "cd {out_dir} && {vlogan} $@".format(
-                vlogan = paths.join(cd_path_fix, ctx.file._vlogan.path),
+                vlogan = paths.join(cd_path_fix, ctx.file._vcs.path, "bin/vlogan"),
                 out_dir = out_dir,
             ),
             arguments = [vlog_args, vlog_defines_args, vlog_files_args],
@@ -259,7 +251,7 @@ def _test_impl(ctx):
                 transitive=[vhdl_files]),
             outputs = [vhdl_andb_dir],
             command = "cd {out_dir} && {vhdlan} $@".format(
-                vhdlan = paths.join(cd_path_fix, ctx.file._vhdlan.path),
+                vhdlan = paths.join(cd_path_fix, ctx.file._vcs.path, "bin/vhdlan"),
                 out_dir = out_dir,
             ),
             arguments = [vhdlan_args, vhdl_files_args],
