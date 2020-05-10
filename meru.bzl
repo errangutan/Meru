@@ -220,7 +220,6 @@ def _test_impl(ctx):
             env = {
                 "VCS_HOME" : local_paths.vcs_home,
                 "HOME" : "/dev/null",
-                "UVM_HOME" : local_paths.uvm_home
             },
             mnemonic = "Vlogan",
             progress_message = "Analysing verilog files.",
@@ -250,7 +249,6 @@ def _test_impl(ctx):
             env = {
                 "VCS_HOME" : local_paths.vcs_home,
                 "HOME" : "/dev/null",
-                "UVM_HOME" : local_paths.uvm_home
             },
             mnemonic = "Vhdlan",
             progress_message = "Analysing vhdl files.",
