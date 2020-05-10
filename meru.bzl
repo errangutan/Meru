@@ -126,10 +126,6 @@ test_attrs = {
             default = "@vcs//:vcs",
             allow_single_file = True
         ),
-        "_uvm_dpi" : attr.label(
-            default = "@vcs//:uvm/dpi/uvm_dpi.cc",
-            allow_single_file = True
-        ),
         "_random_seed" : attr.label(
             default = "@meru//:random_seed"
         ),
@@ -273,7 +269,7 @@ def _test_impl(ctx):
         "-CFLAGS",
         "-DVCS",
         "-debug_access+all",
-        paths.join(cd_path_fix, ctx.file._uvm_dpi.path),
+        paths.join(cd_path_fix, ctx.file._uvm.path, "dpi/uvm_dpi.cc"),
         "-j1",
         ctx.attr.top,
         "-o", simv_file_name,
