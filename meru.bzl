@@ -9,14 +9,8 @@ BlockInfo = provider(
         """A depset of SystemVerilog / Verilog files, required
         to build the target.""",
 
-        "vlog_files_empty":
-        """A boolean which is `True` if `vlog_files` is empty""",
-
         "vhdl_files": """A depset of VHDL files.required
         to build the target.""",
-
-        "vhdl_files_empty":
-        """A boolean which is `True` if `vhdl_files` is empty""",
     }
 )
 
@@ -28,22 +22,6 @@ def _block_impl(ctx):
     them into a single `BlockInfo` provider, while adding the source
     files of the current block. 
     """
-
-    vlog_files_empty = True
-    for label in ctx.attr.vlog_files:
-        if len(label.files.to_list()) != 0:
-            vlog_files_empty = False
-    for block in ctx.attr.blocks:
-        if not block[BlockInfo].vlog_files_empty:
-            vlog_files_empty = False
-
-    vhdl_files_empty = True
-    for label in ctx.attr.vhdl_files:
-        if len(label.files.to_list()) != 0:
-            vhdl_files_empty = False
-    for block in ctx.attr.blocks:
-        if not block[BlockInfo].vhdl_files_empty:
-            vhdl_files_empty = False
 
     # Accumulate all file types into their depsets
     vlog_files = depset(
@@ -59,8 +37,6 @@ def _block_impl(ctx):
     return BlockInfo(
         vlog_files = vlog_files,
         vhdl_files = vhdl_files,
-        vlog_files_empty = vlog_files_empty,
-        vhdl_files_empty = vhdl_files_empty,
     )
 
 block = rule(
@@ -156,20 +132,6 @@ def _test_impl(ctx):
         transitive = [block[BlockInfo].vhdl_files for block in ctx.attr.blocks]
     )
 
-    vlog_files_empty = True
-    for block in ctx.attr.blocks:
-        if not block[BlockInfo].vlog_files_empty:
-            vlog_files_empty = False
-    if has_vlog_top:
-        vlog_files_empty = False
-
-    vhdl_files_empty = True
-    for block in ctx.attr.blocks:
-        if not block[BlockInfo].vhdl_files_empty:
-            vhdl_files_empty = False
-    if has_vhdl_top:
-        vhdl_files_empty = False
-
     # Create define arguments. Each arg is formatted as +define+NAME=VALUE
     # if value is "", the arg format is +define+NAME
     vlog_defines_args = ctx.actions.args()
@@ -187,7 +149,7 @@ def _test_impl(ctx):
 
     analysis_outputs = []
 
-    if not vlog_files_empty:
+    if vlog_files: # If vlog files depset is not empty
         vlog_args = ctx.actions.args()
         vlog_args.add_all([
             "-full64",
@@ -225,7 +187,7 @@ def _test_impl(ctx):
             progress_message = "Analysing verilog files.",
         )
 
-    if not vhdl_files_empty:
+    if vhdl_files: # If vhdl_files depset is not empty
         vhdlan_args = ctx.actions.args()
         vhdlan_args.add_all([
             "-nc",
@@ -429,6 +391,3 @@ def regression_test(**kwargs):
         name = kwargs["name"],
         tests = test_list
     )
-
-    
-
