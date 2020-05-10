@@ -3,7 +3,7 @@ load("//:data_provider.bzl", "Data")
 load("//:config.bzl", "RandomSeedProvider")
 
 BlockInfo = provider(
-    doc = """Provides structure of source files for compiling a block""",
+    doc = """Provides structure of source files for compiling a block.""",
     fields = {
         "vlog_files": 
         """A depset of SystemVerilog / Verilog files, required
@@ -94,7 +94,7 @@ test_attrs = {
             default = {},
         ),
         "timescale" : attr.string(
-            doc = "Elaboration timescale flag",
+            doc = "Sets the `timescale` flag in elaboration.",
             default = "1ns/1ns",
         ),
         "seed" : attr.int(
