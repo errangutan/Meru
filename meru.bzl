@@ -119,13 +119,6 @@ test_attrs = {
 def _test_impl(ctx):
 
     vcs_env = ctx.attr._vcs_env[Data].data
-    for var_name in dir(vcs_env):
-        if getattr(vcs_env, var_name) == None:
-            fail("""{0} is required to run VCS but was not set. You can
-            set the variable by adding the following line to the system-wide
-            bazelrc file (/etc/bazel.bazelrc):
-            build --action_env {0}=<value>
-            """.format(var_name))
 
     has_vlog_top = ctx.file.vlog_top != None
     has_vhdl_top = ctx.file.vhdl_top != None

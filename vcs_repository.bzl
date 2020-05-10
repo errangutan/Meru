@@ -4,7 +4,11 @@ def _vcs_repository_impl(ctx):
     environ = ctx.os.environ
     for var in vcs_env_vars:
         if not var in environ:
-            environ[var] = None
+            fail("""{0} is required to run VCS but was not set. You can
+            set the variable by adding the following line to the system-wide
+            bazelrc file (/etc/bazel.bazelrc):
+            build --action_env {0}=<value>
+            """.format(var))
 
     ctx.symlink(environ["VCS_HOME"], "vcs")
     ctx.symlink(environ["UVM_HOME"], "uvm")
