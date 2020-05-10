@@ -37,7 +37,7 @@ def _vcs_repository_impl(ctx):
     ctx.file("WORKSPACE", "")
     BUILD_components = [
         _bzl_lib(),
-        """exports_files(["vcs", "uvm", "uvm/uvm_pkg.sv", "vcs/bin/vlogan", "vcs/bin/vhdlan", "vcs/bin/vcs"])"""
+        """exports_files(["vcs", "uvm", "uvm/uvm_pkg.sv", "vcs/bin/vlogan", "vcs/bin/vhdlan", "vcs/bin/vcs", "uvm/dpi/uvm_dpi.cc"])"""
     ]
 
     # Write BUILD file, so repo will be accessabe as package
