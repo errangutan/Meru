@@ -131,7 +131,7 @@ test_attrs = {
             allow_single_file = True
         ),
         "_vcs" : attr.label(
-            default = "@vcs//:vcs/bin/vcs",
+            default = "@vcs//:vcs",
             allow_single_file = True
         ),
         "_uvm_pkg" : attr.label(
@@ -225,7 +225,7 @@ def _test_impl(ctx):
 
         ctx.actions.run_shell(
             inputs = depset(
-                [ctx.file._uvm_pkg, ctx.file._vlogan],
+                [ctx.file._uvm, ctx.file._vcs],
                 transitive=[vlog_files]),
             outputs = [AN_DB_dir],
             command = "cd {out_dir} && {vlogan} $@".format(
@@ -255,7 +255,7 @@ def _test_impl(ctx):
 
         ctx.actions.run_shell(
             inputs = depset(
-                [ctx.file._vhdlan],
+                [ctx.file._vcs],
                 transitive=[vhdl_files]),
             outputs = [vhdl_andb_dir],
             command = "cd {out_dir} && {vhdlan} $@".format(
@@ -292,7 +292,7 @@ def _test_impl(ctx):
     ])
 
     command = "cd {out_dir} && {vcs} $@".format(
-        vcs = paths.join(cd_path_fix, ctx.file._vcs.path),
+        vcs = paths.join(cd_path_fix, ctx.file._vcs.path, "bin/vcs"),
         out_dir = out_dir,
     )
 
