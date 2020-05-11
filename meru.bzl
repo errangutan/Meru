@@ -149,48 +149,51 @@ def _test_impl(ctx):
             value = "=%s" % value if value != "" else ""
         ))
 
-    # Get the path where vlogan and vhdlan should pr run.
-    # Once the output directory is resolved, get the relation
-    # between the output directory and the source files root
-    out_dir = paths.join(ctx.bin_dir.path, ctx.label.package, ctx.attr.name)
-    cd_path_fix = "/".join(len(out_dir.split("/"))*[".."])
+    work_dir_path = paths.join(ctx.attr.name, "work")
+
+    synopsys_sim_setup = ctx.actions.declare_file("%s_synopsys_sim.setup" % ctx.attr.name)
+    ctx.actions.write(synopsys_sim_setup, "WORK > DEFAULT\nDEFAULT : ./%s" % paths.join(ctx.bin_dir.path, ctx.label.package,work_dir_path))
+
+    vcs_env_dict = {
+        "VCS_HOME"           : vcs_env.VCS_HOME,
+        "HOME"               : "/dev/null",
+        "SYNOPSYS_SIM_SETUP" : synopsys_sim_setup.path,
+        "LM_LICENSE_FILE"    : vcs_env.LM_LICENSE_FILE,
+        "PATH"               : "/usr/bin:/bin",
+    }
 
     analysis_outputs = []
 
-    if vlog_files: # If vlog files depset is not empty
+    if vlog_files: # If vlog files depset is not 
         vlog_args = ctx.actions.args()
         vlog_args.add_all([
             "-full64",
             "-nc",
-            "+incdir+%s" % paths.join(cd_path_fix, ctx.file._uvm.path),
-            paths.join(cd_path_fix, ctx.file._uvm.path, "uvm_pkg.sv"),
+            "+incdir+%s" % paths.join(ctx.file._uvm.path),
+            paths.join(ctx.file._uvm.path, "uvm_pkg.sv"),
             "-ntb_opts","uvm",
             "-sverilog",
         ])
 
-        # Create vlog files arguments. Each file must pre prepended with
-        # the cd_path_fix, since thier path must be fixed once cd'ing into
-        # the output directory.
+        # Create vlog files arguments.
         vlog_files_args = ctx.actions.args()
-        vlog_files_args.add_all(vlog_files, format_each="{}/%s".format(cd_path_fix))
+        vlog_files_args.add_all(vlog_files)
 
-        AN_DB_dir = ctx.actions.declare_directory(paths.join(ctx.attr.name, "AN.DB"))
+        AN_DB_dir = ctx.actions.declare_directory(paths.join(work_dir_path, "AN.DB"))
         analysis_outputs.append(AN_DB_dir)
 
         ctx.actions.run_shell(
             inputs = depset(
-                [ctx.file._uvm, ctx.file._vcs],
+                [
+                    ctx.file._uvm,
+                    ctx.file._vcs,
+                    synopsys_sim_setup,
+                ],
                 transitive=[vlog_files]),
             outputs = [AN_DB_dir],
-            command = "cd {out_dir} && {vlogan} $@".format(
-                vlogan = paths.join(cd_path_fix, ctx.file._vcs.path, "bin/vlogan"),
-                out_dir = out_dir,
-            ),
+            command = "mkdir -p {work_dir_path} && {vlogan} $@".format(work_dir_path = work_dir_path, vlogan = paths.join(ctx.file._vcs.path, "bin/vlogan")),
             arguments = [vlog_args, vlog_defines_args, vlog_files_args],
-            env = {
-                "VCS_HOME" : vcs_env.VCS_HOME,
-                "HOME" : "/dev/null",
-            },
+            env = vcs_env_dict,
             mnemonic = "Vlogan",
             progress_message = "Analysing verilog files.",
         )
@@ -202,24 +205,21 @@ def _test_impl(ctx):
             "-full64"
         ])
         vhdl_files_args = ctx.actions.args()
-        vhdl_files_args.add_all(vhdl_files, format_each="{}/%s".format(cd_path_fix))
-        vhdl_andb_dir = ctx.actions.declare_directory(paths.join(ctx.attr.name, "64"))
+        vhdl_files_args.add_all(vhdl_files)
+        vhdl_andb_dir = ctx.actions.declare_directory(paths.join(work_dir_path, "64"))
         analysis_outputs.append(vhdl_andb_dir)
 
         ctx.actions.run_shell(
             inputs = depset(
-                [ctx.file._vcs],
+                [
+                    ctx.file._vcs,
+                    synopsys_sim_setup,
+                ],
                 transitive=[vhdl_files]),
             outputs = [vhdl_andb_dir],
-            command = "cd {out_dir} && {vhdlan} $@".format(
-                vhdlan = paths.join(cd_path_fix, ctx.file._vcs.path, "bin/vhdlan"),
-                out_dir = out_dir,
-            ),
+            command = "mkdir -p {work_dir_path} && {vhdlan} $@".format(work_dir_path = work_dir_path, vhdlan = paths.join(ctx.file._vcs.path, "bin/vhdlan")),
             arguments = [vhdlan_args, vhdl_files_args],
-            env = {
-                "VCS_HOME" : vcs_env.VCS_HOME,
-                "HOME" : "/dev/null",
-            },
+            env = vcs_env_dict,
             mnemonic = "Vhdlan",
             progress_message = "Analysing vhdl files.",
         )
@@ -228,8 +228,9 @@ def _test_impl(ctx):
     # if the name is not unique, different targets under the same package
     # which are built concurrently will collide. 
     simv_file_name = "%s_simv" % ctx.attr.name
-    simv = ctx.actions.declare_file(paths.join(ctx.attr.name, simv_file_name))
-    
+    simv = ctx.actions.declare_file(simv_file_name)
+    daidir = ctx.actions.declare_directory("%s.daidir" % simv_file_name)
+
     elab_args = ctx.actions.args()
     elab_args.add_all([
         "-full64",
@@ -237,34 +238,24 @@ def _test_impl(ctx):
         "-CFLAGS",
         "-DVCS",
         "-debug_access+all",
-        paths.join(cd_path_fix, ctx.file._uvm.path, "dpi/uvm_dpi.cc"),
+        paths.join(ctx.file._uvm.path, "dpi/uvm_dpi.cc"),
         "-j1",
         ctx.attr.top,
-        "-o", simv_file_name,
+        "-o", simv,
     ])
 
-    command = "cd {out_dir} && {vcs} $@".format(
-        vcs = paths.join(cd_path_fix, ctx.file._vcs.path, "bin/vcs"),
-        out_dir = out_dir,
-    )
-
-    daidir_path = ctx.actions.declare_directory(
-        paths.join(ctx.attr.name, "%s.daidir" % simv_file_name))
+    command = "{vcs} $@".format(vcs = paths.join(ctx.file._vcs.path, "bin/vcs"))
 
     ctx.actions.run_shell(
-        outputs = [simv, daidir_path],
+        outputs = [simv, daidir],
         inputs = analysis_outputs + [
             ctx.file._vcs,
-            ctx.file._uvm
+            ctx.file._uvm,
+            synopsys_sim_setup,
         ],
         command = command,
         arguments = [elab_args],
-        env = {
-            "VCS_HOME" : vcs_env.VCS_HOME,
-            "LM_LICENSE_FILE" : vcs_env.LM_LICENSE_FILE,
-            "HOME" : "/dev/null",
-            "PATH" : "/usr/bin:/bin",
-        },
+        env = vcs_env_dict,
     )
 
     if ctx.attr._random_seed[RandomSeedProvider].value:
@@ -272,10 +263,10 @@ def _test_impl(ctx):
     else:
         seed = str(ctx.attr.seed)
 
-    run_simv = ctx.actions.declare_file("run_%s_simv" % ctx.attr.name)
-    ctx.actions.write(run_simv, content="""
+    test_run_script = ctx.actions.declare_file("run_%s" % ctx.attr.name)
+    ctx.actions.write(test_run_script, content="""
 #!/bin/bash
-cd {package}/{target_name} &&
+cd {package} &&
 {simv} -exitstatus +ntb_random_seed={seed} $@
     """.format(
         package=ctx.label.package,
@@ -284,8 +275,8 @@ cd {package}/{target_name} &&
         seed = seed))
 
     return [DefaultInfo(
-        executable=run_simv,
-        runfiles=ctx.runfiles(files = [simv, daidir_path])
+        executable=test_run_script,
+        runfiles=ctx.runfiles(files = [simv, daidir])
     )]
     
 
