@@ -191,7 +191,7 @@ def _test_impl(ctx):
                 ],
                 transitive=[vlog_files]),
             outputs = [AN_DB_dir],
-            command = "mkdir -p {work_dir_path} && {vlogan} $@".format(work_dir_path = work_dir_path, vlogan = paths.join(ctx.file._vcs.path, "bin/vlogan")),
+            command = "{vlogan} $@".format(vlogan = paths.join(ctx.file._vcs.path, "bin/vlogan")),
             arguments = [vlog_args, vlog_defines_args, vlog_files_args],
             env = vcs_env_dict,
             mnemonic = "Vlogan",
@@ -217,7 +217,7 @@ def _test_impl(ctx):
                 ],
                 transitive=[vhdl_files]),
             outputs = [vhdl_andb_dir],
-            command = "mkdir -p {work_dir_path} && {vhdlan} $@".format(work_dir_path = work_dir_path, vhdlan = paths.join(ctx.file._vcs.path, "bin/vhdlan")),
+            command = "{vhdlan} $@".format(vhdlan = paths.join(ctx.file._vcs.path, "bin/vhdlan")),
             arguments = [vhdlan_args, vhdl_files_args],
             env = vcs_env_dict,
             mnemonic = "Vhdlan",
@@ -278,7 +278,6 @@ cd {package} &&
         executable=test_run_script,
         runfiles=ctx.runfiles(files = [simv, daidir])
     )]
-    
 
 sim_test = rule(
     doc = "Runs a test.",
