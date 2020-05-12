@@ -1,6 +1,6 @@
 load("@bazel_skylib//lib:paths.bzl", "paths")
 load("//:data_provider.bzl", "Data")
-load("//:config.bzl", "RandomSeedProvider")
+load("//:config.bzl", "RandomSeedProvider", "SeedProvider")
 
 BlockInfo = provider(
     doc = """Provides structure of source files for compiling a block.""",
@@ -98,10 +98,19 @@ test_attrs = {
             default = "1ns/1ns",
         ),
         "seed" : attr.int(
-            default = 1
+            doc = """The seed to run this simulation test with. Is overridden by setting
+            `@meru//:random_seed` or `@meru//:seed`.""",
+            default = 1,
         ),
         "_random_seed" : attr.label(
-            default = "@meru//:random_seed"
+            doc = """Causes the test to be run with a random seed. This is a build setting
+            which is to be set on the command line""",
+            default = "@meru//:random_seed",
+        ),
+        "_seed" : attr.label(
+            doc = """Causes the test to be run with the provided seed. This is a build setting
+            which is to be set on the command line""",
+            default = "@meru//:seed",
         ),
         "_uvm" : attr.label(
             default = "@vcs//:uvm",
@@ -258,8 +267,16 @@ def _test_impl(ctx):
         env = vcs_env_dict,
     )
 
-    if ctx.attr._random_seed[RandomSeedProvider].value:
+    random_seed_setting = ctx.attr._random_seed[RandomSeedProvider].value
+    seed_setting = ctx.attr._seed[SeedProvider].value
+
+    if random_seed_setting and seed_setting != -1:
+        fail("@meru//:random_seed and @meru//:seed are mutually exclusive, choose only one.")
+    
+    if random_seed_setting:
         seed = "$RANDOM"
+    elif seed_setting != -1:
+        seed = str(seed_setting)
     else:
         seed = str(ctx.attr.seed)
 

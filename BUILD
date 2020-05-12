@@ -1,4 +1,4 @@
-load("//:config.bzl", "random_seed")
+load("//:config.bzl", "random_seed", "seed")
 load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
 
 package(default_visibility = ["//visibility:public"])
@@ -6,6 +6,11 @@ package(default_visibility = ["//visibility:public"])
 random_seed(
     name = "random_seed",
     build_setting_default = False,
+)
+
+seed(
+    name = "seed",
+    build_setting_default = -1,
 )
 
 bzl_library(
