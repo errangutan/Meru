@@ -307,6 +307,8 @@ testbench = rule(
     doc = "Testbench. Identical to `sim_test` but is not regarded as a test.",
     implementation = _test_impl,
     attrs = test_attrs,
+    test = False,
+    executable = True,
 )
 
 def _regression_test_sanity_check(kwargs):
